@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { type PluginTimelineItemProps, useAgent, useRpc } from "@getpaseo/plugin";
-import { Text, View } from "react-native";
+import type { PluginTimelineItemProps } from "@getpaseo/plugin";
+import { Text, type TextStyle, View } from "react-native";
 import type { z } from "zod";
 import { assistantMessageSchema } from "./timeline.shared";
-import { formatTurnUsage, getAgentUsage } from "./usage.shared";
+import { useAgentUsage } from "./usage.client";
+import { formatTurnMetadata, formatTurnUsage } from "./usage.shared";
 
 type AssistantMessageData = z.output<typeof assistantMessageSchema>;
 
@@ -14,17 +14,17 @@ export function TokenUsageAssistantMessage({
   theme,
   layout,
 }: PluginTimelineItemProps<AssistantMessageData>) {
-  const agent = useAgent(agentId, ({ provider, status }) => ({ provider, status }));
-  const loadUsage = useRpc(getAgentUsage);
   const messageId = item.data.messageId;
-  const { data } = useQuery({
-    queryKey: ["paseo-token-usage", host.id, agentId, agent?.status],
-    queryFn: () => loadUsage({ agentId }),
-    enabled: agent?.provider === "opencode" && messageId !== null,
-    refetchInterval: agent?.status === "running" ? 2_000 : false,
-    staleTime: agent?.status === "running" ? 1_000 : 30_000,
-  });
-  const turn = data?.turns.find((candidate) => candidate.displayMessageId === messageId);
+  const usage = useAgentUsage(agentId, host.id, false, messageId !== null);
+  const turn = usage?.turns.find((candidate) => candidate.displayMessageId === messageId);
+  const detailStyle: TextStyle = {
+    color: theme.colors.foregroundMuted,
+    fontSize: layout.compact ? 10 : 11,
+    fontVariant: ["tabular-nums"],
+    lineHeight: layout.compact ? 14 : 15,
+    maxWidth: "100%",
+    textAlign: "right",
+  };
 
   return (
     <View style={{ paddingVertical: layout.compact ? 8 : 12 }}>
@@ -39,21 +39,21 @@ export function TokenUsageAssistantMessage({
         {item.data.text}
       </Text>
       {turn ? (
-        <Text
-          selectable
+        <View
           style={{
             alignSelf: "flex-end",
-            color: theme.colors.foregroundMuted,
-            fontSize: layout.compact ? 10 : 11,
-            fontVariant: ["tabular-nums"],
-            lineHeight: layout.compact ? 14 : 15,
+            alignItems: "flex-end",
             marginTop: layout.compact ? 6 : 8,
             maxWidth: "100%",
-            textAlign: "right",
           }}
         >
-          {formatTurnUsage(turn)}
-        </Text>
+          <Text selectable style={detailStyle}>
+            {formatTurnUsage(turn)}
+          </Text>
+          <Text selectable style={[detailStyle, { marginTop: 2 }]}>
+            {formatTurnMetadata(turn)}
+          </Text>
+        </View>
       ) : null}
     </View>
   );

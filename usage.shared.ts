@@ -21,14 +21,24 @@ export const turnUsageSchema = z.object({
     .nullable(),
 });
 
+export const sessionUsageSchema = z.object({
+  tokens: tokenUsageSchema,
+  requestCount: z.number().int().nonnegative(),
+  compactionCount: z.number().int().nonnegative(),
+});
+
 export const getAgentUsage = defineRpc({
   name: "usage.get-agent",
   input: z.object({ agentId: z.string().min(1) }),
-  output: z.object({ turns: z.array(turnUsageSchema) }),
+  output: z.object({
+    session: sessionUsageSchema,
+    turns: z.array(turnUsageSchema),
+  }),
 });
 
 export type TokenUsage = z.output<typeof tokenUsageSchema>;
 export type TurnUsage = z.output<typeof turnUsageSchema>;
+export type SessionUsage = z.output<typeof sessionUsageSchema>;
 
 export interface ModelRequestUsage {
   messageId: string;
@@ -86,7 +96,7 @@ export function aggregateTurnUsage(
       lastCompleted: null,
     };
 
-    if (request.hasVisibleText) group.displayMessageId = request.messageId;
+    if (request.hasVisibleText && request.tokens) group.displayMessageId = request.messageId;
     if (request.tokens) {
       group.requestCount += 1;
       group.tokens = sumUsage(group.tokens, request.tokens);
@@ -118,27 +128,47 @@ export function aggregateTurnUsage(
   return turns;
 }
 
+export function summarizeSessionUsage(
+  requests: readonly ModelRequestUsage[],
+  compactionCount: number,
+): SessionUsage {
+  let tokens = zeroUsage;
+  let requestCount = 0;
+  for (const request of requests) {
+    if (!request.tokens) continue;
+    tokens = sumUsage(tokens, request.tokens);
+    requestCount += 1;
+  }
+  return { tokens, requestCount, compactionCount };
+}
+
 const numberFormatter = new Intl.NumberFormat("en-US");
+
+export function formatNumber(value: number): string {
+  return numberFormatter.format(value);
+}
 
 export function formatCompactTokens(value: number): string {
   if (value >= 1_000_000) return `${Math.round(value / 1_000_000)}M`;
   if (value >= 1_000) return `${Math.round(value / 1_000)}K`;
-  return numberFormatter.format(value);
+  return formatNumber(value);
 }
 
 export function formatTurnUsage(turn: TurnUsage): string {
   const total = usageTotal(turn.tokens);
-  const requestLabel = turn.requestCount === 1 ? "model request" : "model requests";
-  const parts = [
-    `${numberFormatter.format(total)} total tokens`,
-    `${numberFormatter.format(turn.tokens.input)} input`,
-    `${numberFormatter.format(turn.tokens.cacheRead)} cache read`,
-    `${numberFormatter.format(turn.tokens.cacheWrite)} cache write`,
-    `${numberFormatter.format(turn.tokens.reasoning)} reasoning`,
-    `${numberFormatter.format(turn.tokens.output)} output`,
-    `${turn.requestCount} ${requestLabel}`,
-  ];
+  return [
+    `${formatNumber(total)} total tokens`,
+    `${formatNumber(turn.tokens.input)} input`,
+    `${formatNumber(turn.tokens.cacheRead)} cache read`,
+    `${formatNumber(turn.tokens.cacheWrite)} cache write`,
+    `${formatNumber(turn.tokens.reasoning)} reasoning`,
+    `${formatNumber(turn.tokens.output)} output`,
+  ].join(" | ");
+}
 
+export function formatTurnMetadata(turn: TurnUsage): string {
+  const requestLabel = turn.requestCount === 1 ? "model request" : "model requests";
+  const parts = [`${formatNumber(turn.requestCount)} ${requestLabel}`];
   if (turn.contextWindow) {
     parts.push(
       `context ${Math.round((turn.contextWindow.used / turn.contextWindow.max) * 100)}% ` +

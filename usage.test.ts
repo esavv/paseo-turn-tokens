@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateTurnUsage,
   formatCompactTokens,
+  formatTurnMetadata,
   formatTurnUsage,
+  summarizeSessionUsage,
   usageTotal,
   type ModelRequestUsage,
   type TokenUsage,
@@ -63,7 +65,7 @@ describe("turn usage aggregation", () => {
       ),
     ).toEqual([
       {
-        displayMessageId: "assistant-3",
+        displayMessageId: "assistant-1",
         requestCount: 2,
         tokens: {
           input: 300,
@@ -105,6 +107,50 @@ describe("turn usage aggregation", () => {
       ),
     ).toEqual([]);
   });
+
+  it("summarizes all completed requests in the session", () => {
+    expect(
+      summarizeSessionUsage(
+        [
+          {
+            messageId: "assistant-1",
+            parentMessageId: "user-1",
+            providerId: null,
+            modelId: null,
+            tokens: firstUsage,
+            hasVisibleText: true,
+          },
+          {
+            messageId: "assistant-2",
+            parentMessageId: "user-1",
+            providerId: null,
+            modelId: null,
+            tokens: null,
+            hasVisibleText: false,
+          },
+          {
+            messageId: "assistant-3",
+            parentMessageId: "user-2",
+            providerId: null,
+            modelId: null,
+            tokens: secondUsage,
+            hasVisibleText: false,
+          },
+        ],
+        3,
+      ),
+    ).toEqual({
+      tokens: {
+        input: 300,
+        cacheRead: 3_000,
+        cacheWrite: 60,
+        reasoning: 90,
+        output: 150,
+      },
+      requestCount: 2,
+      compactionCount: 3,
+    });
+  });
 });
 
 describe("usage formatting", () => {
@@ -128,7 +174,15 @@ describe("usage formatting", () => {
       }),
     ).toBe(
       "2,400 total tokens | 200 input | 2,000 cache read | 40 cache write | " +
-        "60 reasoning | 100 output | 2 model requests | context 15% (2K / 16K)",
+        "60 reasoning | 100 output",
     );
+    expect(
+      formatTurnMetadata({
+        displayMessageId: "assistant-1",
+        requestCount: 2,
+        tokens: secondUsage,
+        contextWindow: { used: 2_400, max: 16_000 },
+      }),
+    ).toBe("2 model requests | context 15% (2K / 16K)");
   });
 });

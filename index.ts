@@ -1,4 +1,5 @@
 import type { PluginContext } from "@getpaseo/plugin";
+import { contributeComposerPills } from "./composer.client";
 import { TokenUsageAssistantMessage } from "./timeline.client";
 import { assistantMessageSchema, transformAssistantMessage } from "./timeline.shared";
 import { collectAgentUsage } from "./usage.server";
@@ -17,5 +18,6 @@ export default function contribute(plugin: PluginContext) {
     schema: assistantMessageSchema,
     Component: TokenUsageAssistantMessage,
   });
+  plugin.addClientSide(contributeComposerPills);
   return () => {};
 }

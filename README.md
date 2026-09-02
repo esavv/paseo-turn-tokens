@@ -11,6 +11,9 @@ For each user turn, the plugin:
 
 The plugin requires Paseo `0.7.2` or later and currently supports OpenCode agents only.
 
+Three composer pills show session totals for processed tokens, completed model requests, and
+recorded compaction attempts. All three pills and the timeline share one cached usage snapshot.
+
 ## Development
 
 ```sh
@@ -49,5 +52,14 @@ The public plugin runtime does not expose Paseo's Markdown renderer. The replace
 original text, theme colors, content sizing, and spacing, but it displays Markdown source as plain
 text. A host-provided message renderer or assistant footer slot is needed for full fidelity.
 
-Paseo `0.7.2` does not expose draft text or selected attachments to plugins. The composer pill is
-therefore omitted until a useful draft-token estimate can be implemented through a public API.
+Paseo `0.7.2` does not apply plugin timeline transformers to provider-subagent tabs. Those tabs also
+use a synthetic stream ID instead of a normal Paseo agent ID, so subagent usage cannot be displayed
+through the current plugin API.
+
+Paseo `0.7.2` does not expose draft text or selected attachments to plugins, so the composer pills
+cannot estimate an unsent request.
+
+Assistant-message replacement also causes Paseo to alternate between its native streaming row and
+a projected plugin row while text arrives. Stable query keys reduce secondary movement, but a host
+footer or decorator API is required to remove the main streaming jitter without losing native
+Markdown rendering.
