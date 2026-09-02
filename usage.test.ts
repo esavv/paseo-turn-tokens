@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateTurnUsage,
   formatCompactTokens,
+  formatTimelineTokens,
   formatTurnMetadata,
   formatTurnUsage,
   summarizeSessionUsage,
@@ -66,6 +67,7 @@ describe("turn usage aggregation", () => {
     ).toEqual([
       {
         displayMessageId: "assistant-1",
+        responseIndex: 1,
         requestCount: 2,
         tokens: {
           input: 300,
@@ -164,25 +166,33 @@ describe("usage formatting", () => {
     expect(formatCompactTokens(1_500_000)).toBe("2M");
   });
 
-  it("formats one complete timeline line", () => {
+  it("keeps timeline abbreviations in thousands", () => {
+    expect(formatTimelineTokens(999)).toBe("999");
+    expect(formatTimelineTokens(1_500)).toBe("2K");
+    expect(formatTimelineTokens(3_480_643)).toBe("3,481K");
+  });
+
+  it("formats complete timeline details", () => {
     expect(
       formatTurnUsage({
         displayMessageId: "assistant-1",
+        responseIndex: 10,
         requestCount: 2,
         tokens: secondUsage,
         contextWindow: { used: 2_400, max: 16_000 },
       }),
     ).toBe(
-      "2,400 total tokens | 200 input | 2,000 cache read | 40 cache write | " +
-        "60 reasoning | 100 output",
+      "2K total tokens · 200 input · 2K cache read · 40 cache write · " +
+        "60 reasoning · 100 output",
     );
     expect(
       formatTurnMetadata({
         displayMessageId: "assistant-1",
+        responseIndex: 10,
         requestCount: 2,
         tokens: secondUsage,
         contextWindow: { used: 2_400, max: 16_000 },
       }),
-    ).toBe("2 model requests | context 15% (2K / 16K)");
+    ).toBe("assistant response 10 · 2 model requests · context 15% (2K / 16K)");
   });
 });

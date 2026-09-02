@@ -5,7 +5,7 @@ An experimental Paseo plugin that displays OpenCode token usage below assistant 
 For each user turn, the plugin:
 
 - sums fresh input, cache read, cache write, reasoning, and output across completed model requests;
-- shows the recalculated total and number of model requests;
+- shows the assistant-response number, recalculated total, and number of model requests;
 - shows context-window use from the last completed request in the turn; and
 - places one usage line under the last text-bearing assistant message in the turn.
 

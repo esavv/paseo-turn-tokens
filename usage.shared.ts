@@ -11,6 +11,7 @@ export const tokenUsageSchema = z.object({
 
 export const turnUsageSchema = z.object({
   displayMessageId: z.string(),
+  responseIndex: z.number().int().positive(),
   requestCount: z.number().int().positive(),
   tokens: tokenUsageSchema,
   contextWindow: z
@@ -114,6 +115,7 @@ export function aggregateTurnUsage(
 
     turns.push({
       displayMessageId: group.displayMessageId,
+      responseIndex: turns.length + 1,
       requestCount: group.requestCount,
       tokens: group.tokens,
       contextWindow:
@@ -154,27 +156,35 @@ export function formatCompactTokens(value: number): string {
   return formatNumber(value);
 }
 
+export function formatTimelineTokens(value: number): string {
+  if (value >= 1_000) return `${formatNumber(Math.round(value / 1_000))}K`;
+  return formatNumber(value);
+}
+
 export function formatTurnUsage(turn: TurnUsage): string {
   const total = usageTotal(turn.tokens);
   return [
-    `${formatNumber(total)} total tokens`,
-    `${formatNumber(turn.tokens.input)} input`,
-    `${formatNumber(turn.tokens.cacheRead)} cache read`,
-    `${formatNumber(turn.tokens.cacheWrite)} cache write`,
-    `${formatNumber(turn.tokens.reasoning)} reasoning`,
-    `${formatNumber(turn.tokens.output)} output`,
-  ].join(" | ");
+    `${formatTimelineTokens(total)} total tokens`,
+    `${formatTimelineTokens(turn.tokens.input)} input`,
+    `${formatTimelineTokens(turn.tokens.cacheRead)} cache read`,
+    `${formatTimelineTokens(turn.tokens.cacheWrite)} cache write`,
+    `${formatTimelineTokens(turn.tokens.reasoning)} reasoning`,
+    `${formatTimelineTokens(turn.tokens.output)} output`,
+  ].join(" · ");
 }
 
 export function formatTurnMetadata(turn: TurnUsage): string {
   const requestLabel = turn.requestCount === 1 ? "model request" : "model requests";
-  const parts = [`${formatNumber(turn.requestCount)} ${requestLabel}`];
+  const parts = [
+    `assistant response ${formatNumber(turn.responseIndex)}`,
+    `${formatNumber(turn.requestCount)} ${requestLabel}`,
+  ];
   if (turn.contextWindow) {
     parts.push(
       `context ${Math.round((turn.contextWindow.used / turn.contextWindow.max) * 100)}% ` +
-        `(${formatCompactTokens(turn.contextWindow.used)} / ` +
-        `${formatCompactTokens(turn.contextWindow.max)})`,
+        `(${formatTimelineTokens(turn.contextWindow.used)} / ` +
+        `${formatTimelineTokens(turn.contextWindow.max)})`,
     );
   }
-  return parts.join(" | ");
+  return parts.join(" · ");
 }

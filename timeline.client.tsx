@@ -48,10 +48,10 @@ export function TokenUsageAssistantMessage({
           }}
         >
           <Text selectable style={detailStyle}>
-            {formatTurnUsage(turn)}
+            {formatTurnMetadata(turn)}
           </Text>
           <Text selectable style={[detailStyle, { marginTop: 2 }]}>
-            {formatTurnMetadata(turn)}
+            {formatTurnUsage(turn)}
           </Text>
         </View>
       ) : null}

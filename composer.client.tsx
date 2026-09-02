@@ -3,24 +3,36 @@ import { Text } from "react-native";
 import { useAgentUsage } from "./usage.client";
 import { formatCompactTokens, formatNumber, usageTotal } from "./usage.shared";
 
-export function TotalTokensPill({ theme, host, agentId }: PluginComposerPillProps) {
+export function TotalTokensPill({ theme, host, agentId, layout }: PluginComposerPillProps) {
   const usage = useAgentUsage(agentId, host.id, true);
   const label = usage ? `${formatCompactTokens(usageTotal(usage.session.tokens))} tokens` : "-- tokens";
-  return <Text style={{ color: theme.colors.foregroundMuted }}>{label}</Text>;
+  return (
+    <Text style={{ color: theme.colors.foregroundMuted, fontSize: layout.compact ? 12 : 13 }}>
+      {label}
+    </Text>
+  );
 }
 
-export function ModelRequestsPill({ theme, host, agentId }: PluginComposerPillProps) {
+export function ModelRequestsPill({ theme, host, agentId, layout }: PluginComposerPillProps) {
   const usage = useAgentUsage(agentId, host.id, false);
   const count = usage ? formatNumber(usage.session.requestCount) : "--";
   const noun = usage?.session.requestCount === 1 ? "request" : "requests";
-  return <Text style={{ color: theme.colors.foregroundMuted }}>{`${count} ${noun}`}</Text>;
+  return (
+    <Text style={{ color: theme.colors.foregroundMuted, fontSize: layout.compact ? 12 : 13 }}>
+      {`${count} ${noun}`}
+    </Text>
+  );
 }
 
-export function CompactionsPill({ theme, host, agentId }: PluginComposerPillProps) {
+export function CompactionsPill({ theme, host, agentId, layout }: PluginComposerPillProps) {
   const usage = useAgentUsage(agentId, host.id, false);
   const count = usage ? formatNumber(usage.session.compactionCount) : "--";
   const noun = usage?.session.compactionCount === 1 ? "compaction" : "compactions";
-  return <Text style={{ color: theme.colors.foregroundMuted }}>{`${count} ${noun}`}</Text>;
+  return (
+    <Text style={{ color: theme.colors.foregroundMuted, fontSize: layout.compact ? 12 : 13 }}>
+      {`${count} ${noun}`}
+    </Text>
+  );
 }
 
 export function contributeComposerPills(client: PluginClientContext) {
