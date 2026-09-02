@@ -15,7 +15,7 @@ describe("assistant timeline transformer", () => {
       items: [
         {
           type: "plugin",
-          kind: "hello-assistant-message",
+          kind: "token-usage-assistant-message",
           version: 1,
           data: {
             messageId: "message-1",

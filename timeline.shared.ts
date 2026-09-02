@@ -1,7 +1,7 @@
 import type { PluginTimelineTransformerContribution } from "@getpaseo/plugin";
 import { z } from "zod";
 
-export const helloAssistantSchema = z.object({
+export const assistantMessageSchema = z.object({
   messageId: z.string().nullable(),
   text: z.string(),
 });
@@ -13,7 +13,7 @@ export const transformAssistantMessage: AssistantMessageTransformer = ({ item })
   items: [
     {
       type: "plugin",
-      kind: "hello-assistant-message",
+      kind: "token-usage-assistant-message",
       version: 1,
       data: {
         messageId: item.messageId ?? null,
