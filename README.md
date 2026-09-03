@@ -1,7 +1,7 @@
 # Paseo Token Usage
 
-An experimental Paseo plugin that displays OpenCode token usage below assistant turns. It requires
-Paseo `0.7.2` or later.
+An experimental Paseo plugin that displays local token usage below Claude Code, Codex, OpenCode,
+and Pi assistant turns. It requires Paseo `0.7.2` or later.
 
 ## How It Works
 
@@ -15,11 +15,13 @@ loads usage through typed plugin RPC, and adds an expandable token summary. Deta
 default and can be collapsed to one line. Wide layouts use two detail lines. Compact layouts use
 three lines and shorter `in` and `out` labels.
 
-The daemon-side RPC maps the Paseo agent to its OpenCode session and reads completed assistant
-messages from OpenCode's SQLite database. For each assistant turn, the plugin:
+The daemon-side RPC maps the Paseo agent to its provider session and reads completed model requests
+from the provider's local data. For each assistant turn, the plugin:
 
-- groups model requests by their user-message parent ID;
-- sums fresh input, cache read, cache write, reasoning, and output across completed requests;
+- groups model requests by the provider's user turn or turn ID;
+- deduplicates repeated and cumulative provider records;
+- normalizes fresh input, cache read, cache write, reasoning, and output into disjoint categories;
+- sums those categories across completed requests;
 - recalculates the total from those five categories;
 - reports the number of model requests in the turn;
 - uses the last completed request for context-window use; and
@@ -28,10 +30,50 @@ messages from OpenCode's SQLite database. For each assistant turn, the plugin:
 One assistant turn can contain several model requests, such as a tool loop. The current display is
 therefore turn-level, not model-request-level.
 
-## Data Access
+## Supported Providers
 
-The plugin backend opens OpenCode's database in read-only mode and enables SQLite query-only mode.
-The default path is `~/.local/share/opencode/opencode.db`. `OPENCODE_DB` and `XDG_DATA_HOME` are
+### Claude Code
+
+Claude transcripts are stored at:
+
+```text
+~/.claude/projects/<encoded-project>/<session-id>.jsonl
+```
+
+The plugin supports `CLAUDE_CONFIG_DIR` and `CLAUDE_CODE_PROJECT_DIR_NAME`. One API response can be
+stored as separate thinking, tool-use, and text rows with the same usage. The plugin deduplicates
+those rows by request and API message ID. It also keeps both Claude's transcript UUID and API
+message ID because Paseo can use either one for the same visible response.
+
+Claude's transcript format is an internal interface and can change without notice. See the
+[Claude Code session documentation](https://code.claude.com/docs/en/sessions) and
+[cost documentation](https://code.claude.com/docs/en/costs).
+
+### Codex
+
+Codex rollouts are stored at:
+
+```text
+$CODEX_HOME/sessions/YYYY/MM/DD/rollout-<timestamp>-<thread-id>.jsonl
+```
+
+`CODEX_HOME` defaults to `~/.codex`. The plugin first looks up `rollout_path` in Codex's read-only
+`state_*.sqlite` database, including a separate `CODEX_SQLITE_HOME` when configured. It then falls
+back to scanning active and archived rollout directories.
+
+Current rollouts contain one `token_usage_record` delta per completed model response and cumulative
+turn and thread snapshots. The plugin reads only the deltas. Older rollouts that contain only
+`token_count` events use `last_token_usage`, not the cumulative total. Response IDs prevent duplicate
+accounting, and rollback records remove discarded turns.
+
+Codex's rollout and database formats are internal interfaces and can change without notice. See the
+[Codex CLI documentation](https://learn.chatgpt.com/docs/codex/cli) and
+[Codex source](https://github.com/openai/codex).
+
+### OpenCode
+
+The plugin opens OpenCode's database in read-only mode and enables SQLite query-only mode. The
+default path is `~/.local/share/opencode/opencode.db`. `OPENCODE_DB` and `XDG_DATA_HOME` are
 supported when present.
 
 OpenCode assistant-message usage and `step-finish` usage represent the same request. The plugin
@@ -40,18 +82,71 @@ after a model request completes.
 
 OpenCode's database tables and message JSON are internal interfaces and can change without notice.
 
+### Pi
+
+Pi sessions are stored at:
+
+```text
+~/.pi/agent/sessions/--<encoded-project>--/<timestamp>_<session-id>.jsonl
+```
+
+Paseo persists Pi's full session-file path, which the plugin uses when available. Discovery also
+supports `PI_CODING_AGENT_DIR`, `PI_CODING_AGENT_SESSION_DIR`, and project or global Pi settings.
+The plugin follows the active branch represented by the final persisted entry and applies Pi's
+compaction rules. It includes usage from assistant messages, nested tool-result model work,
+compactions, and branch summaries when that work belongs to an assistant turn.
+
+Pi documents its JSONL structure in the
+[session format reference](https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/session-format.md).
+
+## Token Categories
+
+The five displayed categories are disjoint, even when a provider reports overlapping fields:
+
+- `input` is non-cached input;
+- `cache read` is cached input;
+- `cache write` is input written to a provider cache;
+- `reasoning` is the reported thinking or reasoning subset of output; and
+- `output` is the remaining non-reasoning output.
+
+For Claude, Codex, and Pi, reported reasoning is already included in native output. For Codex,
+cached input is also included in native input. The plugin subtracts those subsets before it adds the
+five displayed categories. This keeps the displayed total equal to the provider's full token total.
+
+## Cursor
+
+Cursor is not supported. Normal Cursor CLI and editor session files on macOS do not contain a
+documented, usable per-session token breakdown. Cursor now exposes token usage for agents started
+through its [TypeScript SDK](https://cursor.com/docs/sdk/typescript#token-usage), and account-gated
+Admin or OpenTelemetry interfaces can expose other usage data. Those sources do not recover token
+counts for an existing normal local Cursor session, and Paseo's Cursor ACP provider does not expose
+them to this plugin. Reading opaque Cursor databases would depend on an undocumented format, so the
+plugin does not do it.
+
 ## Limitations
 
 ### Replacement Scope
 
 A timeline transformer receives one selected projected item at a time. It does not receive the
 agent ID, provider, turn, neighboring items, or complete timeline. This plugin must therefore
-replace every normal assistant message. The renderer requests usage only for OpenCode agents, but a
-non-OpenCode assistant message has already been replaced before that check occurs.
+replace every normal assistant message. The renderer requests usage only for Claude Code, Codex,
+OpenCode, and Pi agents, but an unsupported provider's assistant message has already been replaced
+before that check occurs.
 
 Paseo `0.7.2` does not apply timeline transformers to provider-native subagent timelines. Those
 timelines also use synthetic stream IDs instead of normal Paseo agent IDs, so the current usage RPC
 cannot query them.
+
+### Provider State
+
+Claude sidechain responses are not included because Paseo does not transform provider-native
+subagent timelines.
+
+Pi does not persist an in-memory branch selection until another entry is appended. After a rewind,
+usage can temporarily follow the previously persisted branch. Also, when a Pi response has no
+`responseId`, Paseo uses a random message ID for the live row and a deterministic ID after history is
+rebuilt. Usage for that uncommon response cannot attach to the live row, but it can attach after the
+history rebuild.
 
 ### Native Rendering
 
@@ -98,7 +193,7 @@ fallback problems caused by replacement.
 A turn can contain several model requests. A public per-model-request render slot would let this
 plugin show each request's tokens at the point where that request completes instead of combining all
 requests into one turn aggregate. A matching public usage event should include request identity,
-model identity, and all five token categories so the plugin can stop polling OpenCode's database.
+model identity, and all five token categories so the plugin can stop polling provider data.
 
 ### Native Fallback
 
@@ -109,7 +204,7 @@ the enhanced item to render after a cold offline start.
 
 ### Transformer Context
 
-Provider or agent context in the timeline transformer input would let this plugin leave non-OpenCode
+Provider or agent context in the timeline transformer input would let this plugin leave unsupported
 assistant messages unchanged.
 
 ## Development
