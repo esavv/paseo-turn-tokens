@@ -22,7 +22,7 @@ export function TokenUsageAssistantMessage({
   theme,
   layout,
 }: PluginTimelineItemProps<AssistantMessageData>) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const messageId = item.data.messageId;
   const usage = useAgentUsage(agentId, host.id, messageId);
   const turn = usage?.turns.find((candidate) => candidate.displayMessageId === messageId);
