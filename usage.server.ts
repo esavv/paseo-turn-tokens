@@ -1,6 +1,7 @@
 import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 import { z } from "zod";
 import { readClaudeRequests } from "./usage.claude.server";
+import { readCodexRequests } from "./usage.codex.server";
 import { readOpenCodeRequests } from "./usage.opencode.server";
 import { aggregateTurnUsage, getAgentUsage } from "./usage.shared";
 
@@ -63,6 +64,8 @@ export async function collectAgentUsage(
       ? readOpenCodeRequests(sessionId)
       : agent.provider === "claude"
         ? await readClaudeRequests(sessionId, agent.cwd)
+        : agent.provider === "codex"
+          ? await readCodexRequests(sessionId, agent.persistence?.nativeHandle)
         : [];
 
   let limits: ReadonlyMap<string, number> = new Map();

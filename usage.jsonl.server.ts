@@ -22,6 +22,17 @@ export function resolveUserPath(value: string): string {
 }
 
 export async function findFileByName(root: string, fileName: string): Promise<string | null> {
+  return findFile(root, (candidate) => candidate === fileName);
+}
+
+export async function findFileBySuffix(root: string, suffix: string): Promise<string | null> {
+  return findFile(root, (candidate) => candidate.endsWith(suffix));
+}
+
+async function findFile(
+  root: string,
+  matches: (fileName: string) => boolean,
+): Promise<string | null> {
   let entries;
   try {
     entries = await readdir(root, { withFileTypes: true });
@@ -30,11 +41,11 @@ export async function findFileByName(root: string, fileName: string): Promise<st
   }
 
   for (const entry of entries) {
-    if (entry.isFile() && entry.name === fileName) return join(root, entry.name);
+    if (entry.isFile() && matches(entry.name)) return join(root, entry.name);
   }
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const match = await findFileByName(join(root, entry.name), fileName);
+    const match = await findFile(join(root, entry.name), matches);
     if (match) return match;
   }
   return null;

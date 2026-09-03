@@ -3,7 +3,7 @@ import { useAgent, useRpc } from "@getpaseo/plugin";
 import { useEffect } from "react";
 import { getAgentUsage } from "./usage.shared";
 
-const supportedProviders = new Set(["claude", "opencode"]);
+const supportedProviders = new Set(["claude", "codex", "opencode"]);
 
 export function useAgentUsage(agentId: string, hostId: string, messageId: string | null) {
   const agent = useAgent(agentId, ({ provider, status }) => ({ provider, status }));
