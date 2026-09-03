@@ -1,5 +1,6 @@
 import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 import { z } from "zod";
+import { readClaudeRequests } from "./usage.claude.server";
 import { readOpenCodeRequests } from "./usage.opencode.server";
 import { aggregateTurnUsage, getAgentUsage } from "./usage.shared";
 
@@ -54,11 +55,15 @@ export async function collectAgentUsage(
   const result = await paseo.agents.ref(agentId).refresh();
   if (!result) return { turns: [] };
   const { agent } = result;
-  if (agent.provider !== "opencode") return { turns: [] };
 
   const sessionId = agent.runtimeInfo?.sessionId ?? agent.persistence?.sessionId;
   if (!sessionId) return { turns: [] };
-  const requests = readOpenCodeRequests(sessionId);
+  const requests =
+    agent.provider === "opencode"
+      ? readOpenCodeRequests(sessionId)
+      : agent.provider === "claude"
+        ? await readClaudeRequests(sessionId, agent.cwd)
+        : [];
 
   let limits: ReadonlyMap<string, number> = new Map();
   try {
