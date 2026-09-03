@@ -28,16 +28,23 @@ export const turnUsageSchema = z.object({
     .nullable(),
 });
 
+export const compactionUsageSchema = z.object({
+  timelineTimestamp: z.string().min(1),
+  tokens: tokenUsageSchema,
+});
+
 export const getAgentUsage = defineRpc({
   name: "usage.get-agent",
   input: z.object({ agentId: z.string().min(1) }),
   output: z.object({
     turns: z.array(turnUsageSchema),
+    compactions: z.array(compactionUsageSchema),
   }),
 });
 
 export type TokenUsage = z.output<typeof tokenUsageSchema>;
 export type TurnUsage = z.output<typeof turnUsageSchema>;
+export type CompactionUsage = z.output<typeof compactionUsageSchema>;
 
 export interface ModelRequestUsage {
   turnId: string;
@@ -47,6 +54,11 @@ export interface ModelRequestUsage {
   hasVisibleText: boolean;
   contextWindowUsed?: number | null;
   contextWindowMax?: number | null;
+}
+
+export interface ProviderUsage {
+  requests: ModelRequestUsage[];
+  compactions: (TokenUsage | null)[];
 }
 
 const zeroUsage: TokenUsage = {
@@ -151,13 +163,17 @@ export function formatTimelineTokens(value: number): string {
 }
 
 export function formatTurnUsage(turn: TurnUsage): string {
+  return formatTokenUsage(turn.tokens);
+}
+
+export function formatTokenUsage(tokens: TokenUsage): string {
   return [
-    `${formatTimelineTokens(usageTotal(turn.tokens))} total tokens`,
-    `${formatTimelineTokens(turn.tokens.input)} input`,
-    `${formatTimelineTokens(turn.tokens.cacheRead)} cache read`,
-    `${formatTimelineTokens(turn.tokens.cacheWrite)} cache write`,
-    `${formatTimelineTokens(turn.tokens.reasoning)} reasoning`,
-    `${formatTimelineTokens(turn.tokens.output)} output`,
+    `${formatTimelineTokens(usageTotal(tokens))} total tokens`,
+    `${formatTimelineTokens(tokens.input)} input`,
+    `${formatTimelineTokens(tokens.cacheRead)} cache read`,
+    `${formatTimelineTokens(tokens.cacheWrite)} cache write`,
+    `${formatTimelineTokens(tokens.reasoning)} reasoning`,
+    `${formatTimelineTokens(tokens.output)} output`,
   ].join(" · ");
 }
 
@@ -192,12 +208,16 @@ export function formatCompactTurnSummary(turn: TurnUsage): string {
 }
 
 export function formatCompactTurnUsage(turn: TurnUsage): string {
+  return formatCompactTokenUsage(turn.tokens);
+}
+
+export function formatCompactTokenUsage(tokens: TokenUsage): string {
   return [
-    `${formatTimelineTokens(turn.tokens.input)} in`,
-    `${formatTimelineTokens(turn.tokens.cacheRead)} cache read`,
-    `${formatTimelineTokens(turn.tokens.cacheWrite)} cache write`,
-    `${formatTimelineTokens(turn.tokens.reasoning)} reasoning`,
-    `${formatTimelineTokens(turn.tokens.output)} out`,
+    `${formatTimelineTokens(tokens.input)} in`,
+    `${formatTimelineTokens(tokens.cacheRead)} cache read`,
+    `${formatTimelineTokens(tokens.cacheWrite)} cache write`,
+    `${formatTimelineTokens(tokens.reasoning)} reasoning`,
+    `${formatTimelineTokens(tokens.output)} out`,
   ].join(" · ");
 }
 

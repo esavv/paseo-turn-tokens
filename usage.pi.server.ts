@@ -9,7 +9,13 @@ import {
   parseJsonLinesFile,
   resolveUserPath,
 } from "./usage.jsonl.server";
-import { type ModelRequestUsage, tokenUsageSchema, usageTotal } from "./usage.shared";
+import {
+  type ModelRequestUsage,
+  type ProviderUsage,
+  type TokenUsage,
+  tokenUsageSchema,
+  usageTotal,
+} from "./usage.shared";
 
 const piUsageSchema = z
   .object({
@@ -136,8 +142,9 @@ function usageRequest(
   };
 }
 
-export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[] {
+export function parsePiUsage(records: readonly unknown[]): ProviderUsage {
   const requests: ModelRequestUsage[] = [];
+  const compactions: (TokenUsage | null)[] = [];
   const fullPath = activePath(records);
   const projectedPath = contextPath(fullPath);
   const projectedIds = new Set(projectedPath.map((entry) => entry.id));
@@ -188,11 +195,13 @@ export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[
       continue;
     }
 
-    if (
-      activeTurnId &&
-      (type === "compaction" || type === "branch_summary") &&
-      entry.source.usage !== undefined
-    ) {
+    if (type === "compaction") {
+      compactions.push(
+        entry.source.usage === undefined ? null : normalizePiUsage(entry.source.usage).tokens,
+      );
+      continue;
+    }
+    if (activeTurnId && type === "branch_summary" && entry.source.usage !== undefined) {
       requests.push(
         usageRequest(activeTurnId, entry.source.usage, {
           modelId: activeModelId,
@@ -200,7 +209,11 @@ export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[
       );
     }
   }
-  return requests;
+  return { requests, compactions };
+}
+
+export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[] {
+  return parsePiUsage(records).requests;
 }
 
 function resolveConfiguredPath(value: string, cwd: string): string {
@@ -259,12 +272,12 @@ async function resolvePiSessionFile(
   return null;
 }
 
-export async function readPiRequests(
+export async function readPiUsage(
   sessionId: string,
   cwd: string,
   nativeHandle?: string,
-): Promise<ModelRequestUsage[]> {
+): Promise<ProviderUsage> {
   const filePath = await resolvePiSessionFile(sessionId, cwd, nativeHandle);
-  if (!filePath) return [];
-  return parsePiRequests(await parseJsonLinesFile(filePath, "Pi session"));
+  if (!filePath) return { requests: [], compactions: [] };
+  return parsePiUsage(await parseJsonLinesFile(filePath, "Pi session"));
 }

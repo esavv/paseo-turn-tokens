@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCodexRequests } from "./usage.codex.server";
+import { parseCodexRequests, parseCodexUsage } from "./usage.codex.server";
 import { aggregateTurnUsage, usageTotal } from "./usage.shared";
 
 describe("Codex usage", () => {
@@ -133,6 +133,42 @@ describe("Codex usage", () => {
         hasVisibleText: true,
         contextWindowUsed: 60,
         contextWindowMax: 500,
+      },
+    ]);
+  });
+
+  it("separates compaction response usage from assistant turns", () => {
+    const usage = {
+      input_tokens: 180_000,
+      cached_input_tokens: 150_000,
+      cache_write_input_tokens: 0,
+      output_tokens: 3_500,
+      reasoning_output_tokens: 500,
+      total_tokens: 183_500,
+    };
+    const parsed = parseCodexUsage([
+      {
+        type: "token_usage_record",
+        payload: {
+          turn_id: "turn-1",
+          response_id: "compaction-response",
+          usage,
+        },
+      },
+      {
+        type: "compacted",
+        payload: { compaction_response_id: "compaction-response" },
+      },
+    ]);
+
+    expect(parsed.requests).toEqual([]);
+    expect(parsed.compactions).toEqual([
+      {
+        input: 30_000,
+        cacheRead: 150_000,
+        cacheWrite: 0,
+        reasoning: 500,
+        output: 3_000,
       },
     ]);
   });

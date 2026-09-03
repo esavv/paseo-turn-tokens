@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addPiTimelineMessageIds } from "./usage.server";
-import type { TurnUsage } from "./usage.shared";
+import { addCompactionTimelineTimestamps, addPiTimelineMessageIds } from "./usage.server";
+import type { TokenUsage, TurnUsage } from "./usage.shared";
 
 const turns: TurnUsage[] = [
   {
@@ -55,5 +55,55 @@ describe("Pi timeline aliases", () => {
         { item: { type: "assistant_message", messageId: "only-one" } },
       ]),
     ).toEqual(turns);
+  });
+});
+
+describe("compaction timeline aliases", () => {
+  const tokens: TokenUsage = {
+    input: 100,
+    cacheRead: 200,
+    cacheWrite: 0,
+    reasoning: 10,
+    output: 20,
+  };
+
+  it("matches provider usage to completed markers by order", () => {
+    expect(
+      addCompactionTimelineTimestamps([tokens], [
+        {
+          timestamp: "2026-09-03T12:00:00.000Z",
+          item: { type: "compaction", status: "completed" },
+        },
+      ]),
+    ).toEqual([
+      {
+        timelineTimestamp: "2026-09-03T12:00:00.000Z",
+        tokens,
+      },
+    ]);
+  });
+
+  it("does not guess when provider and timeline counts differ", () => {
+    expect(addCompactionTimelineTimestamps([tokens], [])).toEqual([]);
+  });
+
+  it("keeps marker positions when an older compaction has no usage", () => {
+    expect(
+      addCompactionTimelineTimestamps([null, tokens], [
+        {
+          timestamp: "2026-09-03T12:00:00.000Z",
+          item: { type: "compaction", status: "completed" },
+        },
+        {
+          timestamp: "2026-09-03T13:00:00.000Z",
+          item: { type: "compaction", status: "completed" },
+        },
+      ]),
+    ).toEqual([
+      {
+        timelineTimestamp: "2026-09-03T13:00:00.000Z",
+        tokens,
+      },
+    ]);
   });
 });

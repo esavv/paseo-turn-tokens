@@ -1,14 +1,14 @@
 # Paseo Token Usage
 
 An experimental Paseo plugin that displays local token usage below Claude Code, Codex, OpenCode,
-and Pi assistant turns. It requires Paseo `0.7.2` or later.
+and Pi assistant turns and compaction markers. It requires Paseo `0.7.2` or later.
 
 ## How It Works
 
-The plugin registers a **timeline transformer** for projected `assistant_message` entries and a
-versioned **timeline renderer** for its output. In Paseo's terminology, the transformer replaces a
-projected timeline entry with a **plugin timeline item**. "Timeline replacement" describes the
-effect; "timeline transformer" and "timeline renderer" are the public API names.
+The plugin registers **timeline transformers** for projected `assistant_message` and `compaction`
+entries and versioned **timeline renderers** for their output. In Paseo's terminology, a transformer
+replaces a projected timeline entry with a **plugin timeline item**. "Timeline replacement"
+describes the effect; "timeline transformer" and "timeline renderer" are the public API names.
 
 The replacement keeps the original assistant message ID and text. Its renderer reproduces the text,
 loads usage through typed plugin RPC, and adds an expandable token summary. Details are expanded by
@@ -95,28 +95,27 @@ Pi sessions are stored at:
 Paseo persists Pi's full session-file path, which the plugin uses when available. Discovery also
 supports `PI_CODING_AGENT_DIR`, `PI_CODING_AGENT_SESSION_DIR`, and project or global Pi settings.
 The plugin follows the active branch represented by the final persisted entry and applies Pi's
-compaction rules. It includes usage from assistant messages, nested tool-result model work,
-compactions, and branch summaries when that work belongs to an assistant turn.
+compaction rules. Assistant turns include usage from assistant messages, nested tool-result model
+work, and branch summaries. Compaction usage is shown at its separate timeline marker.
 
 Pi documents its JSONL structure in the
 [session format reference](https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/session-format.md).
 
 ### Compaction Usage
 
-Provider data does not expose compaction-summary usage consistently. These results apply to Claude
-Code `2.1.259`, Codex `0.153.0`, OpenCode `1.18.27`, and Pi `0.84.4`:
+Provider-local data does not expose compaction-summary usage consistently. These results apply to
+Claude Code `2.1.259`, Codex `0.153.0`, OpenCode `1.18.27`, and Pi `0.84.4`:
 
 | Provider | Attributable usage | Stored data |
 | --- | --- | --- |
-| Claude Code | No | Compact summaries and boundaries store context metrics such as tokens before and after compaction, but not the summary request's usage. Session totals can include that request without identifying it. |
+| Claude Code | No | Anthropic's server-side [Messages API compaction beta](https://platform.claude.com/docs/en/build-with-claude/compaction#understanding-usage) returns per-iteration compaction usage. Claude Code does not persist that usage in its local transcript or expose it to `PostCompact` hooks. Session totals can include the request without identifying it. |
 | Codex | Yes | A `token_usage_record` identifies the compaction response, and the `compacted` record refers to the same response ID. |
 | OpenCode | Yes | The token-bearing summary assistant message refers to the message that contains the compaction part. |
 | Pi | Yes | `compaction` entries store summary-generation `usage` separately from `tokensBefore`; split compactions can combine two summary requests. |
 
-The data is available in three providers, but Paseo `0.7.2` has no additive timeline render slot.
-A transformer can replace the native `compaction` item with plugin items, but it cannot keep that
-item and add usage immediately after it. The current assistant-message replacement therefore cannot
-show compaction usage at the compaction marker.
+The plugin replaces the native compaction marker to show the available Codex, OpenCode, and Pi data
+in the same expandable format as assistant-turn usage. Paseo `0.7.2` has no additive timeline render
+slot, so the plugin must reproduce the native marker instead of keeping it and adding usage after it.
 
 ## Token Categories
 

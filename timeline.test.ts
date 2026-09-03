@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { transformAssistantMessage } from "./timeline.shared";
+import {
+  formatCompactionLabel,
+  transformAssistantMessage,
+  transformCompaction,
+} from "./timeline.shared";
 
 describe("assistant timeline transformer", () => {
   it("preserves the assistant message in plugin data", () => {
@@ -37,5 +41,39 @@ describe("assistant timeline transformer", () => {
     ).toMatchObject({
       items: [{ data: { messageId: null } }],
     });
+  });
+});
+
+describe("compaction timeline transformer", () => {
+  it("preserves the native marker data in the plugin item", () => {
+    expect(
+      transformCompaction({
+        item: {
+          type: "compaction",
+          status: "completed",
+          trigger: "auto",
+          preTokens: 120_000,
+        },
+      }),
+    ).toEqual({
+      items: [
+        {
+          type: "plugin",
+          kind: "token-usage-compaction",
+          version: 1,
+          data: { status: "completed", trigger: "auto", preTokens: 120_000 },
+        },
+      ],
+    });
+  });
+
+  it("reproduces Paseo's compaction labels", () => {
+    expect(formatCompactionLabel({ status: "loading" })).toBe("Compacting...");
+    expect(formatCompactionLabel({ status: "completed", trigger: "manual" })).toBe(
+      "Context manually compacted",
+    );
+    expect(formatCompactionLabel({ status: "completed", preTokens: 120_000 })).toBe(
+      "Context compacted (120K tokens)",
+    );
   });
 });

@@ -5,10 +5,10 @@ import { getAgentUsage } from "./usage.shared";
 
 const supportedProviders = new Set(["claude", "codex", "opencode", "pi"]);
 
-export function useAgentUsage(agentId: string, hostId: string, messageId: string | null) {
+export function useAgentUsage(agentId: string, hostId: string, requested: boolean) {
   const agent = useAgent(agentId, ({ provider, status }) => ({ provider, status }));
   const loadUsage = useRpc(getAgentUsage);
-  const enabled = messageId !== null && supportedProviders.has(agent?.provider ?? "");
+  const enabled = requested && supportedProviders.has(agent?.provider ?? "");
   const previousStatus = useRef(agent?.status);
   const { data, refetch } = useQuery({
     queryKey: ["paseo-token-usage", hostId, agentId],

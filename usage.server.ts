@@ -1,20 +1,42 @@
 import type { PluginHandlerContext } from "@getpaseo/plugin/server";
 import { z } from "zod";
 import { readClaudeRequests } from "./usage.claude.server";
-import { readCodexRequests } from "./usage.codex.server";
-import { readOpenCodeRequests } from "./usage.opencode.server";
-import { readPiRequests } from "./usage.pi.server";
-import { aggregateTurnUsage, getAgentUsage, type TurnUsage } from "./usage.shared";
+import { readCodexUsage } from "./usage.codex.server";
+import { readOpenCodeUsage } from "./usage.opencode.server";
+import { readPiUsage } from "./usage.pi.server";
+import {
+  aggregateTurnUsage,
+  type CompactionUsage,
+  getAgentUsage,
+  type ProviderUsage,
+  type TokenUsage,
+  type TurnUsage,
+} from "./usage.shared";
 
 const modelCacheDurationMs = 5 * 60 * 1_000;
 const modelLimitCache = new Map<string, { expiresAt: number; limits: ReadonlyMap<string, number> }>();
 const pendingModelLimits = new Map<string, Promise<ReadonlyMap<string, number>>>();
 
 interface ProjectedTimelineEntry {
+  timestamp?: string;
   item: {
     type: string;
     messageId?: string;
+    status?: string;
   };
+}
+
+export function addCompactionTimelineTimestamps(
+  compactions: readonly (TokenUsage | null)[],
+  entries: readonly ProjectedTimelineEntry[],
+): CompactionUsage[] {
+  const timestamps = entries.flatMap(({ item, timestamp }) =>
+    item.type === "compaction" && item.status === "completed" && timestamp ? [timestamp] : [],
+  );
+  if (timestamps.length !== compactions.length) return [];
+  return compactions.flatMap((tokens, index) =>
+    tokens ? [{ timelineTimestamp: timestamps[index] ?? "", tokens }] : [],
+  );
 }
 
 export function addPiTimelineMessageIds(
@@ -73,6 +95,25 @@ async function addPiTimelineAliases(
   }
 }
 
+async function alignCompactions(
+  paseo: PluginHandlerContext["paseo"],
+  agentId: string,
+  compactions: readonly (TokenUsage | null)[],
+): Promise<CompactionUsage[]> {
+  if (compactions.length === 0) return [];
+  try {
+    const timeline = await paseo.agents.ref(agentId).timeline.refetch({
+      direction: "tail",
+      limit: 0,
+      projection: "projected",
+    });
+    if (timeline.error) return [];
+    return addCompactionTimelineTimestamps(compactions, timeline.entries);
+  } catch {
+    return [];
+  }
+}
+
 function positiveNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
@@ -118,21 +159,21 @@ export async function collectAgentUsage(
   { paseo }: PluginHandlerContext,
 ): Promise<z.input<typeof getAgentUsage.output>> {
   const result = await paseo.agents.ref(agentId).refresh();
-  if (!result) return { turns: [] };
+  if (!result) return { turns: [], compactions: [] };
   const { agent } = result;
 
   const sessionId = agent.runtimeInfo?.sessionId ?? agent.persistence?.sessionId;
-  if (!sessionId) return { turns: [] };
-  const requests =
+  if (!sessionId) return { turns: [], compactions: [] };
+  const usage: ProviderUsage =
     agent.provider === "opencode"
-      ? readOpenCodeRequests(sessionId)
+      ? readOpenCodeUsage(sessionId)
       : agent.provider === "claude"
-        ? await readClaudeRequests(sessionId, agent.cwd)
+        ? { requests: await readClaudeRequests(sessionId, agent.cwd), compactions: [] }
         : agent.provider === "codex"
-          ? await readCodexRequests(sessionId, agent.persistence?.nativeHandle)
+          ? await readCodexUsage(sessionId, agent.persistence?.nativeHandle)
           : agent.provider === "pi"
-            ? await readPiRequests(sessionId, agent.cwd, agent.persistence?.nativeHandle)
-            : [];
+            ? await readPiUsage(sessionId, agent.cwd, agent.persistence?.nativeHandle)
+            : { requests: [], compactions: [] };
 
   let limits: ReadonlyMap<string, number> = new Map();
   try {
@@ -140,9 +181,10 @@ export async function collectAgentUsage(
   } catch {
     // Token usage is still useful when model metadata is temporarily unavailable.
   }
-  const turns = aggregateTurnUsage(requests, limits);
+  const turns = aggregateTurnUsage(usage.requests, limits);
   return {
     turns:
       agent.provider === "pi" ? await addPiTimelineAliases(paseo, agentId, turns) : turns,
+    compactions: await alignCompactions(paseo, agentId, usage.compactions),
   };
 }

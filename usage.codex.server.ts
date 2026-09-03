@@ -10,7 +10,13 @@ import {
   parseJsonLinesFile,
   resolveUserPath,
 } from "./usage.jsonl.server";
-import { type ModelRequestUsage, tokenUsageSchema, usageTotal } from "./usage.shared";
+import {
+  type ModelRequestUsage,
+  type ProviderUsage,
+  type TokenUsage,
+  tokenUsageSchema,
+  usageTotal,
+} from "./usage.shared";
 
 const codexUsageSchema = z
   .object({
@@ -90,19 +96,25 @@ function normalizeCodexUsage(value: unknown) {
   };
 }
 
-export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsage[] {
+export function parseCodexUsage(records: readonly unknown[]): ProviderUsage {
   const turns = new Map<string, CodexTurnState>();
   let parsedRequests: CodexRequest[] = [];
   const responseIds = new Set<string>();
   const directTurnIds = new Set<string>();
+  const compactionResponseIds = new Set<string>();
+  const compactionTokens = new Map<string, TokenUsage>();
   let activeTurnId: string | null = null;
 
   for (const record of records) {
-    if (!isRecord(record) || record.type !== "token_usage_record" || !isRecord(record.payload)) {
-      continue;
+    if (!isRecord(record) || !isRecord(record.payload)) continue;
+    if (record.type === "token_usage_record") {
+      const turnId = nonEmptyString(record.payload.turn_id);
+      if (turnId) directTurnIds.add(turnId);
     }
-    const turnId = nonEmptyString(record.payload.turn_id);
-    if (turnId) directTurnIds.add(turnId);
+    if (record.type === "compacted") {
+      const responseId = nonEmptyString(record.payload.compaction_response_id);
+      if (responseId) compactionResponseIds.add(responseId);
+    }
   }
 
   function getTurn(turnId: string): CodexTurnState {
@@ -156,6 +168,10 @@ export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsa
       const responseId = nonEmptyString(payload.response_id);
       if (responseId && responseIds.has(responseId)) continue;
       if (responseId) responseIds.add(responseId);
+      if (responseId && compactionResponseIds.has(responseId)) {
+        compactionTokens.set(responseId, normalizeCodexUsage(payload.usage).tokens);
+        continue;
+      }
       const turn = getTurn(turnId);
       turn.hasDirectUsage = true;
       addUsage(turn, payload.usage, "direct");
@@ -194,7 +210,7 @@ export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsa
     if (!turn.hasDirectUsage) addUsage(turn, info.last_token_usage, "fallback");
   }
 
-  return parsedRequests
+  const requests = parsedRequests
     .filter((request) => request.source === "direct" || !request.turn.hasDirectUsage)
     .map((request) => ({
       turnId: request.turn.id,
@@ -205,6 +221,21 @@ export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsa
       contextWindowUsed: request.contextWindowUsed,
       contextWindowMax: request.turn.contextWindowMax,
     }));
+  const compactions = records.flatMap((record) => {
+    if (!isRecord(record) || record.type !== "compacted" || !isRecord(record.payload)) return [];
+    const responseId = nonEmptyString(record.payload.compaction_response_id);
+    const direct = responseId ? compactionTokens.get(responseId) : undefined;
+    if (direct) return [direct];
+    const latest = isRecord(record.payload.latest_token_usage_record)
+      ? record.payload.latest_token_usage_record
+      : null;
+    return [latest?.usage === undefined ? null : normalizeCodexUsage(latest.usage).tokens];
+  });
+  return { requests, compactions };
+}
+
+export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsage[] {
+  return parseCodexUsage(records).requests;
 }
 
 function resolveCodexHome(): string {
@@ -283,11 +314,11 @@ async function resolveCodexSessionFile(
   return null;
 }
 
-export async function readCodexRequests(
+export async function readCodexUsage(
   sessionId: string,
   nativeHandle?: string,
-): Promise<ModelRequestUsage[]> {
+): Promise<ProviderUsage> {
   const filePath = await resolveCodexSessionFile(sessionId, nativeHandle);
-  if (!filePath) return [];
-  return parseCodexRequests(await parseJsonLinesFile(filePath, "Codex rollout"));
+  if (!filePath) return { requests: [], compactions: [] };
+  return parseCodexUsage(await parseJsonLinesFile(filePath, "Codex rollout"));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePiRequests } from "./usage.pi.server";
+import { parsePiRequests, parsePiUsage } from "./usage.pi.server";
 import { aggregateTurnUsage, usageTotal } from "./usage.shared";
 
 describe("Pi usage", () => {
@@ -160,7 +160,7 @@ describe("Pi usage", () => {
   });
 
   it("keeps usage when compaction omits the preceding user message", () => {
-    const requests = parsePiRequests([
+    const usage = parsePiUsage([
       { type: "session", version: 3, id: "session-1", cwd: "/project" },
       {
         type: "message",
@@ -190,10 +190,13 @@ describe("Pi usage", () => {
       },
     ]);
 
-    expect(requests).toHaveLength(2);
-    expect(requests[0]?.turnId).toBe("pi-context-kept-assistant");
-    const turns = aggregateTurnUsage(requests, new Map());
+    expect(usage.requests).toHaveLength(1);
+    expect(usage.requests[0]?.turnId).toBe("pi-context-kept-assistant");
+    expect(usage.compactions).toEqual([
+      { input: 200, cacheRead: 0, cacheWrite: 0, reasoning: 0, output: 20 },
+    ]);
+    const turns = aggregateTurnUsage(usage.requests, new Map());
     expect(turns[0]?.displayMessageIds).toEqual(["kept-response"]);
-    expect(turns[0]?.requestCount).toBe(2);
+    expect(turns[0]?.requestCount).toBe(1);
   });
 });
