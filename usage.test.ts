@@ -33,26 +33,24 @@ describe("turn usage aggregation", () => {
   it("sums completed requests and uses the last request for context", () => {
     const requests: ModelRequestUsage[] = [
       {
-        messageId: "assistant-1",
-        parentMessageId: "user-1",
-        providerId: "provider-a",
-        modelId: "model-a",
+        turnId: "user-1",
+        displayMessageIds: ["assistant-1"],
+        modelId: "provider-a/model-a",
         tokens: firstUsage,
         hasVisibleText: true,
       },
       {
-        messageId: "assistant-2",
-        parentMessageId: "user-1",
-        providerId: "provider-b",
-        modelId: "model-b",
+        turnId: "user-1",
+        displayMessageIds: ["assistant-2", "assistant-live-2"],
+        modelId: "provider-b/model-b",
         tokens: secondUsage,
         hasVisibleText: false,
+        contextWindowUsed: 2_000,
       },
       {
-        messageId: "assistant-3",
-        parentMessageId: "user-1",
-        providerId: "provider-b",
-        modelId: "model-b",
+        turnId: "user-1",
+        displayMessageIds: ["assistant-3"],
+        modelId: "provider-b/model-b",
         tokens: null,
         hasVisibleText: true,
       },
@@ -68,7 +66,7 @@ describe("turn usage aggregation", () => {
       ),
     ).toEqual([
       {
-        displayMessageId: "assistant-1",
+        displayMessageIds: ["assistant-1"],
         responseIndex: 1,
         requestCount: 2,
         tokens: {
@@ -79,7 +77,7 @@ describe("turn usage aggregation", () => {
           output: 150,
         },
         contextWindow: {
-          used: 2_400,
+          used: 2_000,
           max: 16_000,
         },
       },
@@ -91,17 +89,15 @@ describe("turn usage aggregation", () => {
       aggregateTurnUsage(
         [
           {
-            messageId: "assistant-1",
-            parentMessageId: "user-1",
-            providerId: null,
+            turnId: "user-1",
+            displayMessageIds: ["assistant-1"],
             modelId: null,
             tokens: null,
             hasVisibleText: true,
           },
           {
-            messageId: "assistant-2",
-            parentMessageId: "user-2",
-            providerId: null,
+            turnId: "user-2",
+            displayMessageIds: ["assistant-2"],
             modelId: null,
             tokens: firstUsage,
             hasVisibleText: false,
@@ -128,7 +124,7 @@ describe("usage formatting", () => {
   it("formats wide timeline details", () => {
     expect(
       formatTurnUsage({
-        displayMessageId: "assistant-1",
+        displayMessageIds: ["assistant-1"],
         responseIndex: 10,
         requestCount: 2,
         tokens: secondUsage,
@@ -140,7 +136,7 @@ describe("usage formatting", () => {
     );
     expect(
       formatTurnMetadata({
-        displayMessageId: "assistant-1",
+        displayMessageIds: ["assistant-1"],
         responseIndex: 10,
         requestCount: 2,
         tokens: secondUsage,
@@ -149,7 +145,7 @@ describe("usage formatting", () => {
     ).toBe("assistant turn 10 · 2 model requests · context 15% (2K / 16K)");
     expect(
       formatCollapsedTurnMetadata({
-        displayMessageId: "assistant-1",
+        displayMessageIds: ["assistant-1"],
         responseIndex: 10,
         requestCount: 2,
         tokens: secondUsage,
@@ -160,7 +156,7 @@ describe("usage formatting", () => {
 
   it("formats compact timeline details on three lines", () => {
     const turn = {
-      displayMessageId: "assistant-1",
+      displayMessageIds: ["assistant-1"],
       responseIndex: 10,
       requestCount: 2,
       tokens: secondUsage,

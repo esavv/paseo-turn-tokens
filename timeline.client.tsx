@@ -25,7 +25,9 @@ export function TokenUsageAssistantMessage({
   const [expanded, setExpanded] = useState(true);
   const messageId = item.data.messageId;
   const usage = useAgentUsage(agentId, host.id, messageId);
-  const turn = usage?.turns.find((candidate) => candidate.displayMessageId === messageId);
+  const turn = usage?.turns.find((candidate) =>
+    candidate.displayMessageIds.includes(messageId ?? ""),
+  );
   const metadata = turn
     ? expanded
       ? layout.compact

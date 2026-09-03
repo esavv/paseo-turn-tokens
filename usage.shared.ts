@@ -10,7 +10,7 @@ export const tokenUsageSchema = z.object({
 });
 
 export const turnUsageSchema = z.object({
-  displayMessageId: z.string(),
+  displayMessageIds: z.array(z.string()).min(1),
   responseIndex: z.number().int().positive(),
   requestCount: z.number().int().positive(),
   tokens: tokenUsageSchema,
@@ -34,12 +34,13 @@ export type TokenUsage = z.output<typeof tokenUsageSchema>;
 export type TurnUsage = z.output<typeof turnUsageSchema>;
 
 export interface ModelRequestUsage {
-  messageId: string;
-  parentMessageId: string | null;
-  providerId: string | null;
+  turnId: string;
+  displayMessageIds: readonly string[];
   modelId: string | null;
   tokens: TokenUsage | null;
   hasVisibleText: boolean;
+  contextWindowUsed?: number | null;
+  contextWindowMax?: number | null;
 }
 
 const zeroUsage: TokenUsage = {
@@ -73,7 +74,7 @@ export function aggregateTurnUsage(
   const groups = new Map<
     string,
     {
-      displayMessageId: string | null;
+      displayMessageIds: readonly string[];
       requestCount: number;
       tokens: TokenUsage;
       lastCompleted: ModelRequestUsage | null;
@@ -81,32 +82,35 @@ export function aggregateTurnUsage(
   >();
 
   for (const request of requests) {
-    const groupId = request.parentMessageId ?? request.messageId;
-    const group = groups.get(groupId) ?? {
-      displayMessageId: null,
+    const group = groups.get(request.turnId) ?? {
+      displayMessageIds: [],
       requestCount: 0,
       tokens: zeroUsage,
       lastCompleted: null,
     };
 
-    if (request.hasVisibleText && request.tokens) group.displayMessageId = request.messageId;
+    if (request.hasVisibleText && request.tokens && request.displayMessageIds.length > 0) {
+      group.displayMessageIds = request.displayMessageIds;
+    }
     if (request.tokens) {
       group.requestCount += 1;
       group.tokens = sumUsage(group.tokens, request.tokens);
       group.lastCompleted = request;
     }
-    groups.set(groupId, group);
+    groups.set(request.turnId, group);
   }
 
   const turns: TurnUsage[] = [];
   for (const group of groups.values()) {
-    if (!group.displayMessageId || !group.lastCompleted || group.requestCount === 0) continue;
-    const { providerId, modelId, tokens } = group.lastCompleted;
-    const contextMax =
-      providerId && modelId ? contextLimits.get(`${providerId}/${modelId}`) : undefined;
+    if (group.displayMessageIds.length === 0 || !group.lastCompleted || group.requestCount === 0) {
+      continue;
+    }
+    const { contextWindowMax, contextWindowUsed, modelId, tokens } = group.lastCompleted;
+    const contextMax = contextWindowMax ?? (modelId ? contextLimits.get(modelId) : undefined);
+    const contextUsed = contextWindowUsed ?? usageTotal(tokens ?? zeroUsage);
 
     turns.push({
-      displayMessageId: group.displayMessageId,
+      displayMessageIds: [...group.displayMessageIds],
       responseIndex: turns.length + 1,
       requestCount: group.requestCount,
       tokens: group.tokens,
@@ -114,7 +118,7 @@ export function aggregateTurnUsage(
         contextMax === undefined
           ? null
           : {
-              used: usageTotal(tokens ?? zeroUsage),
+              used: contextUsed,
               max: contextMax,
             },
     });

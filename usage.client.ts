@@ -14,7 +14,7 @@ export function useAgentUsage(agentId: string, hostId: string, messageId: string
     refetchInterval(query) {
       const turns = query.state.data?.turns;
       const latestTurn = turns?.[turns.length - 1];
-      return agent?.status === "running" && latestTurn?.displayMessageId === messageId
+      return agent?.status === "running" && latestTurn?.displayMessageIds.includes(messageId ?? "")
         ? 2_000
         : false;
     },
