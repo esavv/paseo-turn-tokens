@@ -13,6 +13,12 @@ export const turnUsageSchema = z.object({
   displayMessageIds: z.array(z.string()).min(1),
   responseIndex: z.number().int().positive(),
   requestCount: z.number().int().positive(),
+  modelChange: z
+    .object({
+      from: z.string().min(1),
+      to: z.string().min(1),
+    })
+    .optional(),
   tokens: tokenUsageSchema,
   contextWindow: z
     .object({
@@ -101,6 +107,7 @@ export function aggregateTurnUsage(
   }
 
   const turns: TurnUsage[] = [];
+  let previousModelId: string | null = null;
   for (const group of groups.values()) {
     if (group.displayMessageIds.length === 0 || !group.lastCompleted || group.requestCount === 0) {
       continue;
@@ -108,11 +115,16 @@ export function aggregateTurnUsage(
     const { contextWindowMax, contextWindowUsed, modelId, tokens } = group.lastCompleted;
     const contextMax = contextWindowMax ?? (modelId ? contextLimits.get(modelId) : undefined);
     const contextUsed = contextWindowUsed ?? usageTotal(tokens ?? zeroUsage);
+    const modelChange =
+      previousModelId && modelId && previousModelId !== modelId
+        ? { from: previousModelId, to: modelId }
+        : null;
 
     turns.push({
       displayMessageIds: [...group.displayMessageIds],
       responseIndex: turns.length + 1,
       requestCount: group.requestCount,
+      ...(modelChange ? { modelChange } : {}),
       tokens: group.tokens,
       contextWindow:
         contextMax === undefined
@@ -122,6 +134,7 @@ export function aggregateTurnUsage(
               max: contextMax,
             },
     });
+    if (modelId) previousModelId = modelId;
   }
   return turns;
 }
@@ -186,6 +199,12 @@ export function formatCompactTurnUsage(turn: TurnUsage): string {
     `${formatTimelineTokens(turn.tokens.reasoning)} reasoning`,
     `${formatTimelineTokens(turn.tokens.output)} out`,
   ].join(" · ");
+}
+
+export function formatTurnModelChange(turn: TurnUsage): string | null {
+  return turn.modelChange
+    ? `model changed from ${turn.modelChange.from} to ${turn.modelChange.to}`
+    : null;
 }
 
 function formatTurnContext(turn: TurnUsage): string | null {

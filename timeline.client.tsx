@@ -10,6 +10,7 @@ import {
   formatCompactTurnSummary,
   formatCompactTurnUsage,
   formatTurnMetadata,
+  formatTurnModelChange,
   formatTurnUsage,
 } from "./usage.shared";
 
@@ -40,6 +41,8 @@ export function TokenUsageAssistantMessage({
       ? [formatCompactTurnSummary(turn), formatCompactTurnUsage(turn)]
       : [formatTurnUsage(turn)]
     : [];
+  const modelChange = turn ? formatTurnModelChange(turn) : null;
+  if (modelChange) details.push(modelChange);
   const detailStyle: TextStyle = {
     color: theme.colors.foregroundMuted,
     fontSize: layout.compact ? 10 : 11,

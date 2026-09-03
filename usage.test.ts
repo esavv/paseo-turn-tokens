@@ -7,6 +7,7 @@ import {
   formatCompactTurnUsage,
   formatTimelineTokens,
   formatTurnMetadata,
+  formatTurnModelChange,
   formatTurnUsage,
   usageTotal,
   type ModelRequestUsage,
@@ -108,6 +109,39 @@ describe("turn usage aggregation", () => {
     ).toEqual([]);
   });
 
+  it("flags a model change on the first turn that uses the new model", () => {
+    const requests: ModelRequestUsage[] = [
+      {
+        turnId: "user-1",
+        displayMessageIds: ["assistant-1"],
+        modelId: "provider/model-a",
+        tokens: firstUsage,
+        hasVisibleText: true,
+      },
+      {
+        turnId: "user-2",
+        displayMessageIds: ["assistant-2"],
+        modelId: "provider/model-b",
+        tokens: secondUsage,
+        hasVisibleText: true,
+      },
+      {
+        turnId: "user-3",
+        displayMessageIds: ["assistant-3"],
+        modelId: "provider/model-b",
+        tokens: secondUsage,
+        hasVisibleText: true,
+      },
+    ];
+
+    const turns = aggregateTurnUsage(requests, new Map());
+    expect(turns[0]?.modelChange).toBeUndefined();
+    expect(turns[1]?.modelChange).toEqual({
+      from: "provider/model-a",
+      to: "provider/model-b",
+    });
+    expect(turns[2]?.modelChange).toBeUndefined();
+  });
 });
 
 describe("usage formatting", () => {
@@ -168,5 +202,18 @@ describe("usage formatting", () => {
     expect(formatCompactTurnUsage(turn)).toBe(
       "200 in · 2K cache read · 40 cache write · 60 reasoning · 100 out",
     );
+  });
+
+  it("formats model changes", () => {
+    expect(
+      formatTurnModelChange({
+        displayMessageIds: ["assistant-1"],
+        responseIndex: 2,
+        requestCount: 1,
+        modelChange: { from: "provider/model-a", to: "provider/model-b" },
+        tokens: secondUsage,
+        contextWindow: null,
+      }),
+    ).toBe("model changed from provider/model-a to provider/model-b");
   });
 });

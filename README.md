@@ -24,11 +24,13 @@ from the provider's local data. For each assistant turn, the plugin:
 - sums those categories across completed requests;
 - recalculates the total from those five categories;
 - reports the number of model requests in the turn;
+- flags a model change from the preceding completed assistant turn;
 - uses the last completed request for context-window use; and
 - attaches the aggregate to the last text-bearing assistant message in the turn.
 
 One assistant turn can contain several model requests, such as a tool loop. The current display is
-therefore turn-level, not model-request-level.
+therefore turn-level, not model-request-level. When the final request model differs from the
+preceding assistant turn, the expanded details show the old and new model IDs on a final row.
 
 ## Supported Providers
 
