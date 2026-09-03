@@ -155,7 +155,7 @@ describe("usage formatting", () => {
         tokens: secondUsage,
         contextWindow: { used: 2_400, max: 16_000 },
       }),
-    ).toBe("assistant turn 10 * see token usage");
+    ).toBe("assistant turn 10 · see token usage");
   });
 
   it("formats compact timeline details on three lines", () => {

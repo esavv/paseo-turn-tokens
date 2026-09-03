@@ -156,7 +156,7 @@ export function formatTurnMetadata(turn: TurnUsage): string {
 }
 
 export function formatCollapsedTurnMetadata(turn: TurnUsage): string {
-  return `assistant turn ${formatNumber(turn.responseIndex)} * see token usage`;
+  return `assistant turn ${formatNumber(turn.responseIndex)} · see token usage`;
 }
 
 export function formatCompactTurnMetadata(turn: TurnUsage): string {
