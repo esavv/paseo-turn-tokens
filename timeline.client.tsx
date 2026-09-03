@@ -1,5 +1,6 @@
-import type { PluginTimelineItemProps } from "@getpaseo/plugin";
-import { Text, type TextStyle, View } from "react-native";
+import { Icon, type PluginTimelineItemProps } from "@getpaseo/plugin";
+import { useState } from "react";
+import { Pressable, Text, type TextStyle, View } from "react-native";
 import type { z } from "zod";
 import { assistantMessageSchema } from "./timeline.shared";
 import { useAgentUsage } from "./usage.client";
@@ -8,6 +9,7 @@ import {
   formatCompactTurnSummary,
   formatCompactTurnUsage,
   formatTurnMetadata,
+  formatTurnSummary,
   formatTurnUsage,
 } from "./usage.shared";
 
@@ -20,18 +22,23 @@ export function TokenUsageAssistantMessage({
   theme,
   layout,
 }: PluginTimelineItemProps<AssistantMessageData>) {
+  const [expanded, setExpanded] = useState(false);
   const messageId = item.data.messageId;
   const usage = useAgentUsage(agentId, host.id, messageId);
   const turn = usage?.turns.find((candidate) => candidate.displayMessageId === messageId);
-  const details = turn
+  const metadata = turn
     ? layout.compact
-      ? [
-          formatCompactTurnMetadata(turn),
-          formatCompactTurnSummary(turn),
-          formatCompactTurnUsage(turn),
-        ]
-      : [formatTurnMetadata(turn), formatTurnUsage(turn)]
-    : [];
+      ? formatCompactTurnMetadata(turn)
+      : formatTurnMetadata(turn)
+    : null;
+  const summary = turn
+    ? layout.compact
+      ? formatCompactTurnSummary(turn)
+      : expanded
+        ? formatTurnUsage(turn)
+        : formatTurnSummary(turn)
+    : null;
+  const details = turn && layout.compact ? formatCompactTurnUsage(turn) : null;
   const detailStyle: TextStyle = {
     color: theme.colors.foregroundMuted,
     fontSize: layout.compact ? 10 : 11,
@@ -53,7 +60,7 @@ export function TokenUsageAssistantMessage({
       >
         {item.data.text}
       </Text>
-      {details.length > 0 ? (
+      {turn && metadata && summary ? (
         <View
           style={{
             alignSelf: "flex-end",
@@ -62,11 +69,36 @@ export function TokenUsageAssistantMessage({
             maxWidth: "100%",
           }}
         >
-          {details.map((detail, index) => (
-            <Text key={detail} selectable style={[detailStyle, index > 0 && { marginTop: 2 }]}>
-              {detail}
+          <Text selectable style={detailStyle}>
+            {metadata}
+          </Text>
+          <Pressable
+            accessibilityLabel={`${expanded ? "Hide" : "Show"} token details for assistant turn ${turn.responseIndex}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            hitSlop={8}
+            onPress={() => setExpanded((current) => !current)}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              flexDirection: "row",
+              gap: layout.compact ? 1 : 2,
+              marginTop: 2,
+              maxWidth: "100%",
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Icon
+              color={theme.colors.foregroundMuted}
+              name={expanded ? "ChevronDown" : "ChevronRight"}
+              size={layout.compact ? 12 : 13}
+            />
+            <Text style={[detailStyle, { flexShrink: 1 }]}>{summary}</Text>
+          </Pressable>
+          {expanded && details ? (
+            <Text selectable style={[detailStyle, { marginTop: 2 }]}>
+              {details}
             </Text>
-          ))}
+          ) : null}
         </View>
       ) : null}
     </View>

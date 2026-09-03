@@ -6,6 +6,7 @@ import {
   formatCompactTurnUsage,
   formatTimelineTokens,
   formatTurnMetadata,
+  formatTurnSummary,
   formatTurnUsage,
   usageTotal,
   type ModelRequestUsage,
@@ -137,6 +138,15 @@ describe("usage formatting", () => {
       "2K total tokens · 200 input · 2K cache read · 40 cache write · " +
         "60 reasoning · 100 output",
     );
+    expect(
+      formatTurnSummary({
+        displayMessageId: "assistant-1",
+        responseIndex: 10,
+        requestCount: 2,
+        tokens: secondUsage,
+        contextWindow: { used: 2_400, max: 16_000 },
+      }),
+    ).toBe("2K total tokens");
     expect(
       formatTurnMetadata({
         displayMessageId: "assistant-1",

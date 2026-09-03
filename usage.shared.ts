@@ -134,15 +134,18 @@ export function formatTimelineTokens(value: number): string {
 }
 
 export function formatTurnUsage(turn: TurnUsage): string {
-  const total = usageTotal(turn.tokens);
   return [
-    `${formatTimelineTokens(total)} total tokens`,
+    formatTurnSummary(turn),
     `${formatTimelineTokens(turn.tokens.input)} input`,
     `${formatTimelineTokens(turn.tokens.cacheRead)} cache read`,
     `${formatTimelineTokens(turn.tokens.cacheWrite)} cache write`,
     `${formatTimelineTokens(turn.tokens.reasoning)} reasoning`,
     `${formatTimelineTokens(turn.tokens.output)} output`,
   ].join(" · ");
+}
+
+export function formatTurnSummary(turn: TurnUsage): string {
+  return `${formatTimelineTokens(usageTotal(turn.tokens))} total tokens`;
 }
 
 export function formatTurnMetadata(turn: TurnUsage): string {
