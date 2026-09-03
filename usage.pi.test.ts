@@ -158,4 +158,42 @@ describe("Pi usage", () => {
 
     expect(requests.at(-1)?.displayMessageIds).toEqual(["pi-history-assistant-2"]);
   });
+
+  it("keeps usage when compaction omits the preceding user message", () => {
+    const requests = parsePiRequests([
+      { type: "session", version: 3, id: "session-1", cwd: "/project" },
+      {
+        type: "message",
+        id: "omitted-user",
+        parentId: null,
+        message: { role: "user", content: "Large task" },
+      },
+      {
+        type: "message",
+        id: "kept-assistant",
+        parentId: "omitted-user",
+        message: {
+          role: "assistant",
+          responseId: "kept-response",
+          provider: "openai-codex",
+          model: "gpt-5.5",
+          content: [{ type: "text", text: "Retained response" }],
+          usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 },
+        },
+      },
+      {
+        type: "compaction",
+        id: "compaction-1",
+        parentId: "kept-assistant",
+        firstKeptEntryId: "kept-assistant",
+        usage: { input: 200, output: 20, cacheRead: 0, cacheWrite: 0 },
+      },
+    ]);
+
+    expect(requests).toHaveLength(2);
+    expect(requests[0]?.turnId).toBe("pi-context-kept-assistant");
+    const turns = aggregateTurnUsage(requests, new Map());
+    expect(turns[0]?.displayMessageIds).toEqual(["kept-response"]);
+    expect(turns[0]?.requestCount).toBe(2);
+  });
 });

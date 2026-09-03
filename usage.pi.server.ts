@@ -167,7 +167,8 @@ export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[
         continue;
       }
       if (message.role === "assistant") {
-        if (!activeTurnId || message.usage === undefined) continue;
+        activeTurnId ??= `pi-context-${entry.id}`;
+        if (message.usage === undefined) continue;
         const visibleText = hasVisibleText(message.content);
         const responseId = displayMessageIds.get(entry.id);
         if (!responseId) continue;
