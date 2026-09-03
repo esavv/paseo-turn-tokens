@@ -22,24 +22,16 @@ export const turnUsageSchema = z.object({
     .nullable(),
 });
 
-export const sessionUsageSchema = z.object({
-  tokens: tokenUsageSchema,
-  requestCount: z.number().int().nonnegative(),
-  compactionCount: z.number().int().nonnegative(),
-});
-
 export const getAgentUsage = defineRpc({
   name: "usage.get-agent",
   input: z.object({ agentId: z.string().min(1) }),
   output: z.object({
-    session: sessionUsageSchema,
     turns: z.array(turnUsageSchema),
   }),
 });
 
 export type TokenUsage = z.output<typeof tokenUsageSchema>;
 export type TurnUsage = z.output<typeof turnUsageSchema>;
-export type SessionUsage = z.output<typeof sessionUsageSchema>;
 
 export interface ModelRequestUsage {
   messageId: string;
@@ -130,30 +122,10 @@ export function aggregateTurnUsage(
   return turns;
 }
 
-export function summarizeSessionUsage(
-  requests: readonly ModelRequestUsage[],
-  compactionCount: number,
-): SessionUsage {
-  let tokens = zeroUsage;
-  let requestCount = 0;
-  for (const request of requests) {
-    if (!request.tokens) continue;
-    tokens = sumUsage(tokens, request.tokens);
-    requestCount += 1;
-  }
-  return { tokens, requestCount, compactionCount };
-}
-
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 export function formatNumber(value: number): string {
   return numberFormatter.format(value);
-}
-
-export function formatCompactTokens(value: number): string {
-  if (value >= 1_000_000) return `${Math.round(value / 1_000_000)}M`;
-  if (value >= 1_000) return `${Math.round(value / 1_000)}K`;
-  return formatNumber(value);
 }
 
 export function formatTimelineTokens(value: number): string {

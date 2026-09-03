@@ -7,7 +7,6 @@ import {
   aggregateTurnUsage,
   getAgentUsage,
   type ModelRequestUsage,
-  summarizeSessionUsage,
   tokenUsageSchema,
 } from "./usage.shared";
 
@@ -62,36 +61,12 @@ function resolveDatabasePath(): string {
   return join(dataHome, "opencode", "opencode.db");
 }
 
-function readRequests(sessionId: string): {
-  requests: ModelRequestUsage[];
-  compactionCount: number;
-} {
+function readRequests(sessionId: string): ModelRequestUsage[] {
   const database = new DatabaseSync(resolveDatabasePath(), { readOnly: true });
   try {
     database.exec("PRAGMA query_only = ON");
     const session = database.prepare("SELECT id FROM session WHERE id = ?").get(sessionId);
-    if (!session) return { requests: [], compactionCount: 0 };
-
-    const compactionRow = database
-      .prepare(
-        `SELECT COUNT(DISTINCT id) AS count
-         FROM part
-         WHERE session_id = ?
-           AND json_valid(data)
-           AND json_extract(data, '$.type') = 'compaction'`,
-      )
-      .get(sessionId);
-    if (!isRecord(compactionRow)) {
-      throw new Error("OpenCode returned an invalid compaction count");
-    }
-    const compactionCount = compactionRow.count;
-    if (
-      typeof compactionCount !== "number" ||
-      !Number.isInteger(compactionCount) ||
-      compactionCount < 0
-    ) {
-      throw new Error("OpenCode returned an invalid compaction count");
-    }
+    if (!session) return [];
 
     const visibleMessageIds = new Set(
       database
@@ -150,7 +125,7 @@ function readRequests(sessionId: string): {
         hasVisibleText: visibleMessageIds.has(messageId),
       });
     }
-    return { requests, compactionCount };
+    return requests;
   } finally {
     database.close();
   }
@@ -198,14 +173,13 @@ export async function collectAgentUsage(
   { paseo }: PluginHandlerContext,
 ): Promise<z.input<typeof getAgentUsage.output>> {
   const result = await paseo.agents.ref(agentId).refresh();
-  const emptySession = summarizeSessionUsage([], 0);
-  if (!result) return { session: emptySession, turns: [] };
+  if (!result) return { turns: [] };
   const { agent } = result;
-  if (agent.provider !== "opencode") return { session: emptySession, turns: [] };
+  if (agent.provider !== "opencode") return { turns: [] };
 
   const sessionId = agent.runtimeInfo?.sessionId ?? agent.persistence?.sessionId;
-  if (!sessionId) return { session: emptySession, turns: [] };
-  const stored = readRequests(sessionId);
+  if (!sessionId) return { turns: [] };
+  const requests = readRequests(sessionId);
 
   let limits: ReadonlyMap<string, number> = new Map();
   try {
@@ -214,7 +188,6 @@ export async function collectAgentUsage(
     // Token usage is still useful when model metadata is temporarily unavailable.
   }
   return {
-    session: summarizeSessionUsage(stored.requests, stored.compactionCount),
-    turns: aggregateTurnUsage(stored.requests, limits),
+    turns: aggregateTurnUsage(requests, limits),
   };
 }

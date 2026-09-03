@@ -4,11 +4,9 @@ import {
   formatCompactTurnMetadata,
   formatCompactTurnSummary,
   formatCompactTurnUsage,
-  formatCompactTokens,
   formatTimelineTokens,
   formatTurnMetadata,
   formatTurnUsage,
-  summarizeSessionUsage,
   usageTotal,
   type ModelRequestUsage,
   type TokenUsage,
@@ -113,60 +111,11 @@ describe("turn usage aggregation", () => {
     ).toEqual([]);
   });
 
-  it("summarizes all completed requests in the session", () => {
-    expect(
-      summarizeSessionUsage(
-        [
-          {
-            messageId: "assistant-1",
-            parentMessageId: "user-1",
-            providerId: null,
-            modelId: null,
-            tokens: firstUsage,
-            hasVisibleText: true,
-          },
-          {
-            messageId: "assistant-2",
-            parentMessageId: "user-1",
-            providerId: null,
-            modelId: null,
-            tokens: null,
-            hasVisibleText: false,
-          },
-          {
-            messageId: "assistant-3",
-            parentMessageId: "user-2",
-            providerId: null,
-            modelId: null,
-            tokens: secondUsage,
-            hasVisibleText: false,
-          },
-        ],
-        3,
-      ),
-    ).toEqual({
-      tokens: {
-        input: 300,
-        cacheRead: 3_000,
-        cacheWrite: 60,
-        reasoning: 90,
-        output: 150,
-      },
-      requestCount: 2,
-      compactionCount: 3,
-    });
-  });
 });
 
 describe("usage formatting", () => {
   it("recalculates totals from all five categories", () => {
     expect(usageTotal(firstUsage)).toBe(1_200);
-  });
-
-  it("matches Token Viz compact context formatting", () => {
-    expect(formatCompactTokens(999)).toBe("999");
-    expect(formatCompactTokens(1_500)).toBe("2K");
-    expect(formatCompactTokens(1_500_000)).toBe("2M");
   });
 
   it("keeps timeline abbreviations in thousands", () => {
