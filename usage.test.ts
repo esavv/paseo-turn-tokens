@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateTurnUsage,
+  formatCollapsedTurnMetadata,
   formatCompactTurnMetadata,
   formatCompactTurnSummary,
   formatCompactTurnUsage,
   formatTimelineTokens,
   formatTurnMetadata,
-  formatTurnSummary,
   formatTurnUsage,
   usageTotal,
   type ModelRequestUsage,
@@ -139,15 +139,6 @@ describe("usage formatting", () => {
         "60 reasoning · 100 output",
     );
     expect(
-      formatTurnSummary({
-        displayMessageId: "assistant-1",
-        responseIndex: 10,
-        requestCount: 2,
-        tokens: secondUsage,
-        contextWindow: { used: 2_400, max: 16_000 },
-      }),
-    ).toBe("2K total tokens");
-    expect(
       formatTurnMetadata({
         displayMessageId: "assistant-1",
         responseIndex: 10,
@@ -156,6 +147,15 @@ describe("usage formatting", () => {
         contextWindow: { used: 2_400, max: 16_000 },
       }),
     ).toBe("assistant turn 10 · 2 model requests · context 15% (2K / 16K)");
+    expect(
+      formatCollapsedTurnMetadata({
+        displayMessageId: "assistant-1",
+        responseIndex: 10,
+        requestCount: 2,
+        tokens: secondUsage,
+        contextWindow: { used: 2_400, max: 16_000 },
+      }),
+    ).toBe("assistant turn 10 * see token usage");
   });
 
   it("formats compact timeline details on three lines", () => {

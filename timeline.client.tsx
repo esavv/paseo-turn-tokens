@@ -5,11 +5,11 @@ import type { z } from "zod";
 import { assistantMessageSchema } from "./timeline.shared";
 import { useAgentUsage } from "./usage.client";
 import {
+  formatCollapsedTurnMetadata,
   formatCompactTurnMetadata,
   formatCompactTurnSummary,
   formatCompactTurnUsage,
   formatTurnMetadata,
-  formatTurnSummary,
   formatTurnUsage,
 } from "./usage.shared";
 
@@ -27,18 +27,17 @@ export function TokenUsageAssistantMessage({
   const usage = useAgentUsage(agentId, host.id, messageId);
   const turn = usage?.turns.find((candidate) => candidate.displayMessageId === messageId);
   const metadata = turn
-    ? layout.compact
-      ? formatCompactTurnMetadata(turn)
-      : formatTurnMetadata(turn)
+    ? expanded
+      ? layout.compact
+        ? formatCompactTurnMetadata(turn)
+        : formatTurnMetadata(turn)
+      : formatCollapsedTurnMetadata(turn)
     : null;
-  const summary = turn
+  const details = turn
     ? layout.compact
-      ? formatCompactTurnSummary(turn)
-      : expanded
-        ? formatTurnUsage(turn)
-        : formatTurnSummary(turn)
-    : null;
-  const details = turn && layout.compact ? formatCompactTurnUsage(turn) : null;
+      ? [formatCompactTurnSummary(turn), formatCompactTurnUsage(turn)]
+      : [formatTurnUsage(turn)]
+    : [];
   const detailStyle: TextStyle = {
     color: theme.colors.foregroundMuted,
     fontSize: layout.compact ? 10 : 11,
@@ -60,7 +59,7 @@ export function TokenUsageAssistantMessage({
       >
         {item.data.text}
       </Text>
-      {turn && metadata && summary ? (
+      {turn && metadata ? (
         <View
           style={{
             alignSelf: "flex-end",
@@ -69,9 +68,6 @@ export function TokenUsageAssistantMessage({
             maxWidth: "100%",
           }}
         >
-          <Text selectable style={detailStyle}>
-            {metadata}
-          </Text>
           <Pressable
             accessibilityLabel={`${expanded ? "Hide" : "Show"} token details for assistant turn ${turn.responseIndex}`}
             accessibilityRole="button"
@@ -82,23 +78,24 @@ export function TokenUsageAssistantMessage({
               alignItems: "center",
               flexDirection: "row",
               gap: layout.compact ? 1 : 2,
-              marginTop: 2,
               maxWidth: "100%",
               opacity: pressed ? 0.6 : 1,
             })}
           >
+            <Text style={[detailStyle, { flexShrink: 1 }]}>{metadata}</Text>
             <Icon
               color={theme.colors.foregroundMuted}
               name={expanded ? "ChevronDown" : "ChevronRight"}
               size={layout.compact ? 12 : 13}
             />
-            <Text style={[detailStyle, { flexShrink: 1 }]}>{summary}</Text>
           </Pressable>
-          {expanded && details ? (
-            <Text selectable style={[detailStyle, { marginTop: 2 }]}>
-              {details}
-            </Text>
-          ) : null}
+          {expanded
+            ? details.map((detail) => (
+                <Text key={detail} selectable style={[detailStyle, { marginTop: 2 }]}>
+                  {detail}
+                </Text>
+              ))
+            : null}
         </View>
       ) : null}
     </View>
