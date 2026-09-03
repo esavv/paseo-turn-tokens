@@ -123,4 +123,39 @@ describe("Pi usage", () => {
 
     expect(requests[0]?.displayMessageIds).toEqual(["pi-history-assistant-1"]);
   });
+
+  it("numbers synthetic history IDs from the compacted context", () => {
+    const assistantMessage = {
+      role: "assistant",
+      content: [{ type: "text", text: "Response" }],
+      usage: { input: 10, output: 2, cacheRead: 0, cacheWrite: 0 },
+    };
+    const requests = parsePiRequests([
+      { type: "session", version: 3, id: "session-1", cwd: "/project" },
+      { type: "message", id: "user-1", parentId: null, message: { role: "user" } },
+      { type: "message", id: "assistant-1", parentId: "user-1", message: assistantMessage },
+      {
+        type: "message",
+        id: "user-2",
+        parentId: "assistant-1",
+        message: { role: "user" },
+      },
+      { type: "message", id: "assistant-2", parentId: "user-2", message: assistantMessage },
+      {
+        type: "compaction",
+        id: "compaction-1",
+        parentId: "assistant-2",
+        firstKeptEntryId: "user-2",
+      },
+      {
+        type: "message",
+        id: "user-3",
+        parentId: "compaction-1",
+        message: { role: "user" },
+      },
+      { type: "message", id: "assistant-3", parentId: "user-3", message: assistantMessage },
+    ]);
+
+    expect(requests.at(-1)?.displayMessageIds).toEqual(["pi-history-assistant-2"]);
+  });
 });

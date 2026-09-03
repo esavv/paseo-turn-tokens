@@ -52,7 +52,9 @@ async function findFile(
 }
 
 export async function parseJsonLinesFile(filePath: string, sourceName: string): Promise<unknown[]> {
-  const lines = (await readFile(filePath, "utf8")).split(/\r?\n/u);
+  const source = await readFile(filePath, "utf8");
+  const lines = source.split(/\r?\n/u);
+  const hasTerminatedFinalLine = source.endsWith("\n") || source.endsWith("\r");
   let lastContentIndex = lines.length - 1;
   while (lastContentIndex >= 0 && !lines[lastContentIndex]?.trim()) lastContentIndex -= 1;
 
@@ -63,7 +65,7 @@ export async function parseJsonLinesFile(filePath: string, sourceName: string): 
     try {
       records.push(JSON.parse(line));
     } catch {
-      if (index === lastContentIndex) continue;
+      if (index === lastContentIndex && !hasTerminatedFinalLine) continue;
       throw new Error(`${sourceName} contains invalid JSON on line ${index + 1}`);
     }
   }

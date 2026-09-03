@@ -49,6 +49,10 @@ function positiveInteger(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
 }
 
+function nonnegativeInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
 function visibleAssistantMessageId(payload: Record<string, unknown>): string | null {
   if (payload.type !== "message" || payload.role !== "assistant") return null;
   const content = payload.content;
@@ -88,9 +92,18 @@ function normalizeCodexUsage(value: unknown) {
 
 export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsage[] {
   const turns = new Map<string, CodexTurnState>();
-  const parsedRequests: CodexRequest[] = [];
+  let parsedRequests: CodexRequest[] = [];
   const responseIds = new Set<string>();
+  const directTurnIds = new Set<string>();
   let activeTurnId: string | null = null;
+
+  for (const record of records) {
+    if (!isRecord(record) || record.type !== "token_usage_record" || !isRecord(record.payload)) {
+      continue;
+    }
+    const turnId = nonEmptyString(record.payload.turn_id);
+    if (turnId) directTurnIds.add(turnId);
+  }
 
   function getTurn(turnId: string): CodexTurnState {
     const existing = turns.get(turnId);
@@ -100,7 +113,7 @@ export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsa
       modelId: null,
       contextWindowMax: null,
       pendingDisplayMessageIds: [],
-      hasDirectUsage: false,
+      hasDirectUsage: directTurnIds.has(turnId),
     };
     turns.set(turnId, created);
     return created;
@@ -160,6 +173,17 @@ export function parseCodexRequests(records: readonly unknown[]): ModelRequestUsa
     }
     if (payload.type === "task_complete") {
       activeTurnId = null;
+      continue;
+    }
+    if (payload.type === "thread_rolled_back") {
+      const message = isRecord(payload.msg) ? payload.msg : payload;
+      const count = nonnegativeInteger(message.num_turns) ?? nonnegativeInteger(message.numTurns) ?? 0;
+      if (count === 0) continue;
+      const removedTurnIds = [...turns.keys()].slice(-count);
+      const removed = new Set(removedTurnIds);
+      parsedRequests = parsedRequests.filter((request) => !removed.has(request.turn.id));
+      for (const turnId of removedTurnIds) turns.delete(turnId);
+      if (activeTurnId && removed.has(activeTurnId)) activeTurnId = null;
       continue;
     }
     if (payload.type !== "token_count" || !activeTurnId) continue;

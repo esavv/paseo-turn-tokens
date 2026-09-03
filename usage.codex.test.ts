@@ -136,4 +136,50 @@ describe("Codex usage", () => {
       },
     ]);
   });
+
+  it("removes turns discarded by a rollback", () => {
+    const usage = {
+      input_tokens: 10,
+      cached_input_tokens: 0,
+      output_tokens: 2,
+      reasoning_output_tokens: 0,
+      total_tokens: 12,
+    };
+    const records: unknown[] = [];
+    for (const turnId of ["turn-1", "turn-2"]) {
+      records.push(
+        { type: "event_msg", payload: { type: "task_started", turn_id: turnId } },
+        {
+          type: "response_item",
+          payload: {
+            id: `assistant-${turnId}`,
+            type: "message",
+            role: "assistant",
+            content: [{ type: "output_text", text: "Response" }],
+          },
+        },
+        { type: "event_msg", payload: { type: "token_count", info: { last_token_usage: usage } } },
+        { type: "event_msg", payload: { type: "task_complete", turn_id: turnId } },
+      );
+    }
+    records.push(
+      { type: "event_msg", payload: { type: "thread_rolled_back", num_turns: 1 } },
+      { type: "event_msg", payload: { type: "task_started", turn_id: "turn-3" } },
+      {
+        type: "response_item",
+        payload: {
+          id: "assistant-turn-3",
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_text", text: "Replacement" }],
+        },
+      },
+      { type: "event_msg", payload: { type: "token_count", info: { last_token_usage: usage } } },
+    );
+
+    expect(parseCodexRequests(records).map((request) => request.turnId)).toEqual([
+      "turn-1",
+      "turn-3",
+    ]);
+  });
 });

@@ -132,7 +132,11 @@ export function parseClaudeRequests(records: readonly unknown[]): ModelRequestUs
 
     const apiMessageId = entry.message.id?.trim() || null;
     const transcriptMessageId = entry.uuid?.trim() || null;
-    const identity = entry.requestId?.trim() || apiMessageId || transcriptMessageId;
+    const requestId = entry.requestId?.trim() || null;
+    const identity =
+      requestId && apiMessageId
+        ? `${requestId}\0${apiMessageId}`
+        : requestId || apiMessageId || transcriptMessageId;
     if (!identity) continue;
     const key = `${activeTurnId}\0${identity}`;
     const visibleText = hasVisibleAssistantText(entry.message.content);

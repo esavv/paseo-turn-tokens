@@ -75,6 +75,27 @@ function activePath(records: readonly unknown[]): PiEntry[] {
   return path.reverse();
 }
 
+function contextPath(path: readonly PiEntry[]): PiEntry[] {
+  let compactionIndex = -1;
+  for (let index = 0; index < path.length; index += 1) {
+    if (path[index]?.source.type === "compaction") compactionIndex = index;
+  }
+  if (compactionIndex < 0) return [...path];
+
+  const compaction = path[compactionIndex];
+  if (!compaction) return [...path];
+  const firstKeptEntryId = nonEmptyString(compaction.source.firstKeptEntryId);
+  const projected = [compaction];
+  if (firstKeptEntryId) {
+    const firstKeptIndex = path.findIndex((entry) => entry.id === firstKeptEntryId);
+    if (firstKeptIndex >= 0 && firstKeptIndex < compactionIndex) {
+      projected.push(...path.slice(firstKeptIndex, compactionIndex));
+    }
+  }
+  projected.push(...path.slice(compactionIndex + 1));
+  return projected;
+}
+
 function hasVisibleText(content: unknown): boolean {
   if (typeof content === "string") return content.trim().length > 0;
   return (
@@ -120,7 +141,7 @@ export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[
   let activeTurnId: string | null = null;
   let assistantIndex = 0;
 
-  for (const entry of activePath(records)) {
+  for (const entry of contextPath(activePath(records))) {
     const type = entry.source.type;
     if (type === "message") {
       const message = isRecord(entry.source.message) ? entry.source.message : null;
