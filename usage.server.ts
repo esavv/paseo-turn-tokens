@@ -3,6 +3,7 @@ import { z } from "zod";
 import { readClaudeRequests } from "./usage.claude.server";
 import { readCodexRequests } from "./usage.codex.server";
 import { readOpenCodeRequests } from "./usage.opencode.server";
+import { readPiRequests } from "./usage.pi.server";
 import { aggregateTurnUsage, getAgentUsage } from "./usage.shared";
 
 const modelCacheDurationMs = 5 * 60 * 1_000;
@@ -66,7 +67,9 @@ export async function collectAgentUsage(
         ? await readClaudeRequests(sessionId, agent.cwd)
         : agent.provider === "codex"
           ? await readCodexRequests(sessionId, agent.persistence?.nativeHandle)
-        : [];
+          : agent.provider === "pi"
+            ? await readPiRequests(sessionId, agent.cwd, agent.persistence?.nativeHandle)
+            : [];
 
   let limits: ReadonlyMap<string, number> = new Map();
   try {
