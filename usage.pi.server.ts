@@ -138,10 +138,26 @@ function usageRequest(
 
 export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[] {
   const requests: ModelRequestUsage[] = [];
+  const fullPath = activePath(records);
+  const projectedPath = contextPath(fullPath);
+  const projectedIds = new Set(projectedPath.map((entry) => entry.id));
+  const displayMessageIds = new Map<string, string>();
   let activeTurnId: string | null = null;
+  let activeModelId: string | null = null;
   let assistantIndex = 0;
 
-  for (const entry of contextPath(activePath(records))) {
+  for (const entry of projectedPath) {
+    if (entry.source.type !== "message" || !isRecord(entry.source.message)) continue;
+    const message = entry.source.message;
+    if (message.role !== "assistant") continue;
+    assistantIndex += 1;
+    displayMessageIds.set(
+      entry.id,
+      nonEmptyString(message.responseId) ?? `pi-history-assistant-${assistantIndex}`,
+    );
+  }
+
+  for (const entry of fullPath.filter((candidate) => projectedIds.has(candidate.id))) {
     const type = entry.source.type;
     if (type === "message") {
       const message = isRecord(entry.source.message) ? entry.source.message : null;
@@ -151,15 +167,15 @@ export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[
         continue;
       }
       if (message.role === "assistant") {
-        assistantIndex += 1;
         if (!activeTurnId || message.usage === undefined) continue;
         const visibleText = hasVisibleText(message.content);
-        const responseId =
-          nonEmptyString(message.responseId) ?? `pi-history-assistant-${assistantIndex}`;
+        const responseId = displayMessageIds.get(entry.id);
+        if (!responseId) continue;
+        activeModelId = modelId(message);
         requests.push(
           usageRequest(activeTurnId, message.usage, {
             displayMessageIds: visibleText ? [responseId] : [],
-            modelId: modelId(message),
+            modelId: activeModelId,
             hasVisibleText: visibleText,
           }),
         );
@@ -176,7 +192,11 @@ export function parsePiRequests(records: readonly unknown[]): ModelRequestUsage[
       (type === "compaction" || type === "branch_summary") &&
       entry.source.usage !== undefined
     ) {
-      requests.push(usageRequest(activeTurnId, entry.source.usage));
+      requests.push(
+        usageRequest(activeTurnId, entry.source.usage, {
+          modelId: activeModelId,
+        }),
+      );
     }
   }
   return requests;
