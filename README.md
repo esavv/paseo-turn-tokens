@@ -101,6 +101,23 @@ compactions, and branch summaries when that work belongs to an assistant turn.
 Pi documents its JSONL structure in the
 [session format reference](https://github.com/earendil-works/pi-mono/blob/main/packages/coding-agent/docs/session-format.md).
 
+### Compaction Usage
+
+Provider data does not expose compaction-summary usage consistently. These results apply to Claude
+Code `2.1.259`, Codex `0.153.0`, OpenCode `1.18.27`, and Pi `0.84.4`:
+
+| Provider | Attributable usage | Stored data |
+| --- | --- | --- |
+| Claude Code | No | Compact summaries and boundaries store context metrics such as tokens before and after compaction, but not the summary request's usage. Session totals can include that request without identifying it. |
+| Codex | Yes | A `token_usage_record` identifies the compaction response, and the `compacted` record refers to the same response ID. |
+| OpenCode | Yes | The token-bearing summary assistant message refers to the message that contains the compaction part. |
+| Pi | Yes | `compaction` entries store summary-generation `usage` separately from `tokensBefore`; split compactions can combine two summary requests. |
+
+The data is available in three providers, but Paseo `0.7.2` has no additive timeline render slot.
+A transformer can replace the native `compaction` item with plugin items, but it cannot keep that
+item and add usage immediately after it. The current assistant-message replacement therefore cannot
+show compaction usage at the compaction marker.
+
 ## Token Categories
 
 The five displayed categories are disjoint, even when a provider reports overlapping fields:
@@ -135,9 +152,10 @@ replace every normal assistant message. The renderer requests usage only for Cla
 OpenCode, and Pi agents, but an unsupported provider's assistant message has already been replaced
 before that check occurs.
 
-Paseo `0.7.2` does not apply timeline transformers to provider-native subagent timelines. Those
+Paseo `0.7.2` does not expose a plugin extension point in provider-native subagent timelines. Their
+separate timeline path does not apply timeline transformers or produce plugin timeline items. Those
 timelines also use synthetic stream IDs instead of normal Paseo agent IDs, so the current usage RPC
-cannot query them.
+cannot query them. Plugin features outside the subagent timeline are not affected.
 
 ### Provider State
 
@@ -196,6 +214,22 @@ A turn can contain several model requests. A public per-model-request render slo
 plugin show each request's tokens at the point where that request completes instead of combining all
 requests into one turn aggregate. A matching public usage event should include request identity,
 model identity, and all five token categories so the plugin can stop polling provider data.
+
+### Post-Compaction Slot
+
+A public render slot immediately after each native compaction marker would let plugins show the
+summary request's usage without replacing the marker. The slot should provide the normal agent
+context and enough compaction identity to match provider data. Codex, OpenCode, and Pi can supply
+this usage today; Claude Code would remain unavailable until its transcript stores attributable
+usage.
+
+### Subagent Timeline Slots
+
+Provider-native subagent sessions need plugin render slots too. Paseo `0.7.2` uses a separate,
+read-only timeline path for these sessions and does not apply the main-session timeline transformer
+or renderer system there. Supporting the same assistant-turn, model-request, and post-compaction
+slots in main and subagent timelines would let plugins present data consistently without requiring
+replacement support in subagent sessions.
 
 ### Native Fallback
 
