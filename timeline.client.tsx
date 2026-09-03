@@ -1,11 +1,12 @@
-import { Icon, type PluginTimelineItemProps } from "@getpaseo/plugin";
+import { Icon, type PluginTimelineItemProps, useAgent } from "@getpaseo/plugin";
 import { useState } from "react";
-import { Pressable, Text, type TextStyle, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, type TextStyle, View } from "react-native";
 import type { z } from "zod";
 import {
   assistantMessageSchema,
   compactionSchema,
   formatCompactionLabel,
+  shouldHideLoadingCompaction,
 } from "./timeline.shared";
 import { useAgentUsage } from "./usage.client";
 import {
@@ -33,6 +34,7 @@ interface TokenDisclosureProps {
   details: string[];
   expandedMetadata: string;
   foregroundMuted: string;
+  marginTop?: number;
 }
 
 function TokenDisclosure({
@@ -42,6 +44,7 @@ function TokenDisclosure({
   details,
   expandedMetadata,
   foregroundMuted,
+  marginTop,
 }: TokenDisclosureProps) {
   const [expanded, setExpanded] = useState(true);
   const detailStyle: TextStyle = {
@@ -58,7 +61,7 @@ function TokenDisclosure({
       style={{
         alignSelf: "flex-end",
         alignItems: "flex-end",
-        marginTop: compact ? 6 : 8,
+        marginTop: marginTop ?? (compact ? 6 : 8),
         maxWidth: "100%",
       }}
     >
@@ -152,10 +155,22 @@ export function TokenUsageCompaction({
   theme,
   timestamp,
 }: PluginTimelineItemProps<CompactionData>) {
+  const agentStatus = useAgent(agentId, ({ status }) => status);
   const usage = useAgentUsage(agentId, host.id, item.data.status === "completed");
-  const compaction = usage
+  const matchedCompaction = usage
     ? findCompactionUsage(usage.compactions, timestamp.getTime())
     : undefined;
+  const compaction = item.data.status === "completed" ? matchedCompaction : undefined;
+  if (
+    shouldHideLoadingCompaction(item.data.status, Boolean(matchedCompaction), agentStatus)
+  ) {
+    return null;
+  }
+
+  const markerData = {
+    ...item.data,
+    trigger: item.data.trigger ?? compaction?.trigger,
+  };
   const details = compaction
     ? layout.compact
       ? [
@@ -166,29 +181,41 @@ export function TokenUsageCompaction({
     : [];
 
   return (
-    <View style={{ paddingVertical: layout.compact ? 8 : 12 }}>
-      <View style={{ alignItems: "center", flexDirection: "row", gap: 8 }}>
-        <View style={{ backgroundColor: theme.colors.foregroundMuted, flex: 1, height: 1 }} />
-        <Text
-          style={{
-            color: theme.colors.foregroundMuted,
-            fontSize: layout.compact ? 10 : 11,
-            lineHeight: layout.compact ? 14 : 15,
-          }}
-        >
-          {formatCompactionLabel(item.data)}
-        </Text>
-        <View style={{ backgroundColor: theme.colors.foregroundMuted, flex: 1, height: 1 }} />
+    <View>
+      <View
+        style={{
+          alignItems: "center",
+          flexDirection: "row",
+          gap: 8,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}
+      >
+        <View style={{ backgroundColor: theme.colors.border, flex: 1, height: 1 }} />
+        <View style={{ alignItems: "center", flexDirection: "row", gap: 8 }}>
+          {item.data.status === "loading" ? (
+            <ActivityIndicator color="#a1a1aa" size="small" />
+          ) : (
+            <Icon color="#a1a1aa" name="Scissors" size={12} />
+          )}
+          <Text style={{ color: theme.colors.foregroundMuted, fontSize: 13 }}>
+            {formatCompactionLabel(markerData)}
+          </Text>
+        </View>
+        <View style={{ backgroundColor: theme.colors.border, flex: 1, height: 1 }} />
       </View>
       {compaction ? (
-        <TokenDisclosure
-          accessibilityLabel="context compaction"
-          collapsedMetadata="context compaction · see token usage"
-          compact={layout.compact}
-          details={details}
-          expandedMetadata="context compaction"
-          foregroundMuted={theme.colors.foregroundMuted}
-        />
+        <View style={{ paddingHorizontal: 16 }}>
+          <TokenDisclosure
+            accessibilityLabel="context compaction"
+            collapsedMetadata="see compaction token usage"
+            compact={layout.compact}
+            details={details}
+            expandedMetadata="context compaction"
+            foregroundMuted={theme.colors.foregroundMuted}
+            marginTop={0}
+          />
+        </View>
       ) : null}
     </View>
   );

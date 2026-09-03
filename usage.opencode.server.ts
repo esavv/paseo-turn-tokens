@@ -60,7 +60,11 @@ function resolveDatabasePath(): string {
 export function parseOpenCodeUsage(
   rows: readonly unknown[],
   visibleMessageIds: ReadonlySet<string>,
-  compactionMarkers: readonly { messageId: string; timestamp: number }[],
+  compactionMarkers: readonly {
+    messageId: string;
+    timestamp: number;
+    trigger?: "auto" | "manual";
+  }[],
 ): ProviderUsage {
   const requests: ModelRequestUsage[] = [];
   const compactionTokens = new Map<string, CompactionUsage["tokens"]>();
@@ -105,9 +109,9 @@ export function parseOpenCodeUsage(
   }
   return {
     requests,
-    compactions: compactionMarkers.flatMap(({ messageId, timestamp }) => {
+    compactions: compactionMarkers.flatMap(({ messageId, timestamp, trigger }) => {
       const tokens = compactionTokens.get(messageId);
-      return tokens ? [{ timestamp, tokens }] : [];
+      return tokens ? [{ timestamp, ...(trigger ? { trigger } : {}), tokens }] : [];
     }),
   };
 }
@@ -138,7 +142,9 @@ export function readOpenCodeUsage(sessionId: string): ProviderUsage {
 
     const compactionMarkers = database
       .prepare(
-        `SELECT message_id AS messageId, time_created AS timestamp
+        `SELECT message_id AS messageId,
+                time_created AS timestamp,
+                json_extract(data, '$.auto') AS auto
          FROM part
          WHERE session_id = ?
            AND json_valid(data)
@@ -152,9 +158,12 @@ export function readOpenCodeUsage(sessionId: string): ProviderUsage {
         if (typeof timestamp !== "number" || !Number.isSafeInteger(timestamp) || timestamp < 0) {
           throw new Error("OpenCode returned an invalid compaction timestamp");
         }
+        const trigger: "auto" | "manual" | undefined =
+          typeof row.auto === "number" ? (row.auto === 0 ? "manual" : "auto") : undefined;
         return {
           messageId: stringField(row.messageId, "compaction message ID"),
           timestamp,
+          ...(trigger ? { trigger } : {}),
         };
       });
     const rows = database

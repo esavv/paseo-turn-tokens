@@ -41,7 +41,7 @@ describe("OpenCode usage", () => {
       parseOpenCodeUsage(
         rows,
         new Set(["assistant-message"]),
-        [{ messageId: "compaction-message", timestamp: 1_000 }],
+        [{ messageId: "compaction-message", timestamp: 1_000, trigger: "auto" }],
       ),
     ).toEqual({
       requests: [
@@ -56,6 +56,7 @@ describe("OpenCode usage", () => {
       compactions: [
         {
           timestamp: 1_000,
+          trigger: "auto",
           tokens: { input: 100, cacheRead: 50, cacheWrite: 10, reasoning: 5, output: 20 },
         },
       ],

@@ -30,6 +30,7 @@ export const turnUsageSchema = z.object({
 
 export const compactionUsageSchema = z.object({
   timestamp: z.number().int().nonnegative(),
+  trigger: z.enum(["auto", "manual"]).optional(),
   tokens: tokenUsageSchema,
 });
 

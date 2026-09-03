@@ -54,3 +54,14 @@ export function formatCompactionLabel(data: z.output<typeof compactionSchema>): 
   if (data.preTokens) return `Context compacted (${Math.round(data.preTokens / 1_000)}K tokens)`;
   return "Context compacted";
 }
+
+export function shouldHideLoadingCompaction(
+  status: z.output<typeof compactionSchema>["status"],
+  hasCompletedUsage: boolean,
+  agentStatus: string | null | undefined,
+): boolean {
+  return (
+    status === "loading" &&
+    (hasCompletedUsage || (agentStatus != null && agentStatus !== "running"))
+  );
+}

@@ -117,6 +117,13 @@ The plugin replaces the native compaction marker to show the available Codex, Op
 in the same expandable format as assistant-turn usage. Paseo `0.7.2` has no additive timeline render
 slot, so the plugin must reproduce the native marker instead of keeping it and adding usage after it.
 
+Paseo emits OpenCode compaction markers during a live session, but its production OpenCode
+`streamHistory()` path does not replay persisted compaction parts. A cold history rebuild or clean
+import can therefore omit those markers even though OpenCode still stores the compaction and its
+usage. The plugin can replace a marker that Paseo supplies, but the timeline transformer API cannot
+insert a missing marker at its original position. The plugin's usage RPC can still read the stored
+compaction data. This is a Paseo history-replay limitation rather than lost OpenCode data.
+
 ## Token Categories
 
 The five displayed categories are disjoint, even when a provider reports overlapping fields:
@@ -186,6 +193,11 @@ Paseo first renders a matching live event as a native row, then refreshes the pr
 applies the plugin replacement. This can cause visible row movement while assistant text streams.
 Changing projected message text can also remount the plugin item and reset its local disclosure
 state.
+
+Paseo normally merges a native compaction's loading and completed events into one row. Timeline
+replacement removes the native compaction identity used for that merge. The plugin hides a stale
+loading replacement when completed usage appears or the agent becomes idle, so the completed marker
+is the only row that remains.
 
 ### Offline Use
 

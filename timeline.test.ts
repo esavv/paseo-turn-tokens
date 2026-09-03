@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCompactionLabel,
+  shouldHideLoadingCompaction,
   transformAssistantMessage,
   transformCompaction,
 } from "./timeline.shared";
@@ -75,5 +76,12 @@ describe("compaction timeline transformer", () => {
     expect(formatCompactionLabel({ status: "completed", preTokens: 120_000 })).toBe(
       "Context compacted (120K tokens)",
     );
+  });
+
+  it("hides a stale loading row after compaction finishes", () => {
+    expect(shouldHideLoadingCompaction("loading", true, "running")).toBe(true);
+    expect(shouldHideLoadingCompaction("loading", false, "idle")).toBe(true);
+    expect(shouldHideLoadingCompaction("loading", false, "running")).toBe(false);
+    expect(shouldHideLoadingCompaction("completed", true, "idle")).toBe(false);
   });
 });
