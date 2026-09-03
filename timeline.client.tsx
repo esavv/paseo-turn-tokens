@@ -211,7 +211,7 @@ export function TokenUsageCompaction({
             collapsedMetadata="see compaction token usage"
             compact={layout.compact}
             details={details}
-            expandedMetadata="context compaction"
+            expandedMetadata="compaction token usage"
             foregroundMuted={theme.colors.foregroundMuted}
             marginTop={0}
           />
