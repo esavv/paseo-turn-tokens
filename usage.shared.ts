@@ -29,7 +29,7 @@ export const turnUsageSchema = z.object({
 });
 
 export const compactionUsageSchema = z.object({
-  timelineTimestamp: z.string().min(1),
+  timestamp: z.number().int().nonnegative(),
   tokens: tokenUsageSchema,
 });
 
@@ -58,7 +58,25 @@ export interface ModelRequestUsage {
 
 export interface ProviderUsage {
   requests: ModelRequestUsage[];
-  compactions: (TokenUsage | null)[];
+  compactions: CompactionUsage[];
+}
+
+const compactionMatchWindowMs = 5 * 60 * 1_000;
+
+export function findCompactionUsage(
+  compactions: readonly CompactionUsage[],
+  timestamp: number,
+): CompactionUsage | undefined {
+  let closest: CompactionUsage | undefined;
+  let closestDistance = Number.POSITIVE_INFINITY;
+  for (const compaction of compactions) {
+    const distance = Math.abs(compaction.timestamp - timestamp);
+    if (distance < closestDistance) {
+      closest = compaction;
+      closestDistance = distance;
+    }
+  }
+  return closestDistance <= compactionMatchWindowMs ? closest : undefined;
 }
 
 const zeroUsage: TokenUsage = {

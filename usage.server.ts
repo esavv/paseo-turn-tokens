@@ -6,10 +6,8 @@ import { readOpenCodeUsage } from "./usage.opencode.server";
 import { readPiUsage } from "./usage.pi.server";
 import {
   aggregateTurnUsage,
-  type CompactionUsage,
   getAgentUsage,
   type ProviderUsage,
-  type TokenUsage,
   type TurnUsage,
 } from "./usage.shared";
 
@@ -18,25 +16,10 @@ const modelLimitCache = new Map<string, { expiresAt: number; limits: ReadonlyMap
 const pendingModelLimits = new Map<string, Promise<ReadonlyMap<string, number>>>();
 
 interface ProjectedTimelineEntry {
-  timestamp?: string;
   item: {
     type: string;
     messageId?: string;
-    status?: string;
   };
-}
-
-export function addCompactionTimelineTimestamps(
-  compactions: readonly (TokenUsage | null)[],
-  entries: readonly ProjectedTimelineEntry[],
-): CompactionUsage[] {
-  const timestamps = entries.flatMap(({ item, timestamp }) =>
-    item.type === "compaction" && item.status === "completed" && timestamp ? [timestamp] : [],
-  );
-  if (timestamps.length !== compactions.length) return [];
-  return compactions.flatMap((tokens, index) =>
-    tokens ? [{ timelineTimestamp: timestamps[index] ?? "", tokens }] : [],
-  );
 }
 
 export function addPiTimelineMessageIds(
@@ -92,25 +75,6 @@ async function addPiTimelineAliases(
     return addPiTimelineMessageIds(turns, timeline.entries);
   } catch {
     return [...turns];
-  }
-}
-
-async function alignCompactions(
-  paseo: PluginHandlerContext["paseo"],
-  agentId: string,
-  compactions: readonly (TokenUsage | null)[],
-): Promise<CompactionUsage[]> {
-  if (compactions.length === 0) return [];
-  try {
-    const timeline = await paseo.agents.ref(agentId).timeline.refetch({
-      direction: "tail",
-      limit: 0,
-      projection: "projected",
-    });
-    if (timeline.error) return [];
-    return addCompactionTimelineTimestamps(compactions, timeline.entries);
-  } catch {
-    return [];
   }
 }
 
@@ -185,6 +149,6 @@ export async function collectAgentUsage(
   return {
     turns:
       agent.provider === "pi" ? await addPiTimelineAliases(paseo, agentId, turns) : turns,
-    compactions: await alignCompactions(paseo, agentId, usage.compactions),
+    compactions: usage.compactions,
   };
 }

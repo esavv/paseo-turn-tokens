@@ -3,9 +3,9 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import {
+  type CompactionUsage,
   type ModelRequestUsage,
   type ProviderUsage,
-  type TokenUsage,
   tokenUsageSchema,
 } from "./usage.shared";
 
@@ -60,11 +60,11 @@ function resolveDatabasePath(): string {
 export function parseOpenCodeUsage(
   rows: readonly unknown[],
   visibleMessageIds: ReadonlySet<string>,
-  compactionMessageIds: readonly string[],
+  compactionMarkers: readonly { messageId: string; timestamp: number }[],
 ): ProviderUsage {
   const requests: ModelRequestUsage[] = [];
-  const compactionTokens = new Map<string, TokenUsage>();
-  const compactionMessageIdSet = new Set(compactionMessageIds);
+  const compactionTokens = new Map<string, CompactionUsage["tokens"]>();
+  const compactionMessageIdSet = new Set(compactionMarkers.map(({ messageId }) => messageId));
   for (const row of rows) {
     if (!isRecord(row)) throw new Error("OpenCode returned an invalid message row");
     const messageId = stringField(row.id, "message ID");
@@ -105,7 +105,10 @@ export function parseOpenCodeUsage(
   }
   return {
     requests,
-    compactions: compactionMessageIds.map((messageId) => compactionTokens.get(messageId) ?? null),
+    compactions: compactionMarkers.flatMap(({ messageId, timestamp }) => {
+      const tokens = compactionTokens.get(messageId);
+      return tokens ? [{ timestamp, tokens }] : [];
+    }),
   };
 }
 
@@ -133,9 +136,9 @@ export function readOpenCodeUsage(sessionId: string): ProviderUsage {
         }),
     );
 
-    const compactionMessageIds = database
+    const compactionMarkers = database
       .prepare(
-        `SELECT message_id AS messageId
+        `SELECT message_id AS messageId, time_created AS timestamp
          FROM part
          WHERE session_id = ?
            AND json_valid(data)
@@ -145,7 +148,14 @@ export function readOpenCodeUsage(sessionId: string): ProviderUsage {
       .all(sessionId)
       .map((row) => {
         if (!isRecord(row)) throw new Error("OpenCode returned an invalid compaction-part row");
-        return stringField(row.messageId, "compaction message ID");
+        const timestamp = row.timestamp;
+        if (typeof timestamp !== "number" || !Number.isSafeInteger(timestamp) || timestamp < 0) {
+          throw new Error("OpenCode returned an invalid compaction timestamp");
+        }
+        return {
+          messageId: stringField(row.messageId, "compaction message ID"),
+          timestamp,
+        };
       });
     const rows = database
       .prepare(
@@ -156,7 +166,7 @@ export function readOpenCodeUsage(sessionId: string): ProviderUsage {
       )
       .all(sessionId);
 
-    return parseOpenCodeUsage(rows, visibleMessageIds, compactionMessageIds);
+    return parseOpenCodeUsage(rows, visibleMessageIds, compactionMarkers);
   } finally {
     database.close();
   }

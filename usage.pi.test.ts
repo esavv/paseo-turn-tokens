@@ -185,6 +185,7 @@ describe("Pi usage", () => {
         type: "compaction",
         id: "compaction-1",
         parentId: "kept-assistant",
+        timestamp: "2026-09-03T12:00:00.000Z",
         firstKeptEntryId: "kept-assistant",
         usage: { input: 200, output: 20, cacheRead: 0, cacheWrite: 0 },
       },
@@ -193,7 +194,10 @@ describe("Pi usage", () => {
     expect(usage.requests).toHaveLength(1);
     expect(usage.requests[0]?.turnId).toBe("pi-context-kept-assistant");
     expect(usage.compactions).toEqual([
-      { input: 200, cacheRead: 0, cacheWrite: 0, reasoning: 0, output: 20 },
+      {
+        timestamp: Date.parse("2026-09-03T12:00:00.000Z"),
+        tokens: { input: 200, cacheRead: 0, cacheWrite: 0, reasoning: 0, output: 20 },
+      },
     ]);
     const turns = aggregateTurnUsage(usage.requests, new Map());
     expect(turns[0]?.displayMessageIds).toEqual(["kept-response"]);

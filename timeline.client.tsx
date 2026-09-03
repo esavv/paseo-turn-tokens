@@ -19,6 +19,7 @@ import {
   formatTurnMetadata,
   formatTurnModelChange,
   formatTurnUsage,
+  findCompactionUsage,
   usageTotal,
 } from "./usage.shared";
 
@@ -152,9 +153,9 @@ export function TokenUsageCompaction({
   timestamp,
 }: PluginTimelineItemProps<CompactionData>) {
   const usage = useAgentUsage(agentId, host.id, item.data.status === "completed");
-  const compaction = usage?.compactions.find(
-    (candidate) => Date.parse(candidate.timelineTimestamp) === timestamp.getTime(),
-  );
+  const compaction = usage
+    ? findCompactionUsage(usage.compactions, timestamp.getTime())
+    : undefined;
   const details = compaction
     ? layout.compact
       ? [

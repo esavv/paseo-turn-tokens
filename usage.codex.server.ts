@@ -59,6 +59,12 @@ function nonnegativeInteger(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 }
 
+function timestampMilliseconds(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp >= 0 ? timestamp : null;
+}
+
 function visibleAssistantMessageId(payload: Record<string, unknown>): string | null {
   if (payload.type !== "message" || payload.role !== "assistant") return null;
   const content = payload.content;
@@ -223,13 +229,16 @@ export function parseCodexUsage(records: readonly unknown[]): ProviderUsage {
     }));
   const compactions = records.flatMap((record) => {
     if (!isRecord(record) || record.type !== "compacted" || !isRecord(record.payload)) return [];
+    const timestamp = timestampMilliseconds(record.timestamp);
+    if (timestamp === null) return [];
     const responseId = nonEmptyString(record.payload.compaction_response_id);
     const direct = responseId ? compactionTokens.get(responseId) : undefined;
-    if (direct) return [direct];
+    if (direct) return [{ timestamp, tokens: direct }];
     const latest = isRecord(record.payload.latest_token_usage_record)
       ? record.payload.latest_token_usage_record
       : null;
-    return [latest?.usage === undefined ? null : normalizeCodexUsage(latest.usage).tokens];
+    if (latest?.usage === undefined) return [];
+    return [{ timestamp, tokens: normalizeCodexUsage(latest.usage).tokens }];
   });
   return { requests, compactions };
 }

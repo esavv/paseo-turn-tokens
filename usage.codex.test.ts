@@ -156,6 +156,7 @@ describe("Codex usage", () => {
         },
       },
       {
+        timestamp: "2026-09-03T12:00:00.000Z",
         type: "compacted",
         payload: { compaction_response_id: "compaction-response" },
       },
@@ -164,11 +165,14 @@ describe("Codex usage", () => {
     expect(parsed.requests).toEqual([]);
     expect(parsed.compactions).toEqual([
       {
-        input: 30_000,
-        cacheRead: 150_000,
-        cacheWrite: 0,
-        reasoning: 500,
-        output: 3_000,
+        timestamp: Date.parse("2026-09-03T12:00:00.000Z"),
+        tokens: {
+          input: 30_000,
+          cacheRead: 150_000,
+          cacheWrite: 0,
+          reasoning: 500,
+          output: 3_000,
+        },
       },
     ]);
   });

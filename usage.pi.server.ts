@@ -10,9 +10,9 @@ import {
   resolveUserPath,
 } from "./usage.jsonl.server";
 import {
+  type CompactionUsage,
   type ModelRequestUsage,
   type ProviderUsage,
-  type TokenUsage,
   tokenUsageSchema,
   usageTotal,
 } from "./usage.shared";
@@ -36,6 +36,12 @@ interface PiEntry {
 
 function nonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function timestampMilliseconds(value: unknown): number | null {
+  if (typeof value !== "string") return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp >= 0 ? timestamp : null;
 }
 
 function normalizePiUsage(value: unknown) {
@@ -144,7 +150,7 @@ function usageRequest(
 
 export function parsePiUsage(records: readonly unknown[]): ProviderUsage {
   const requests: ModelRequestUsage[] = [];
-  const compactions: (TokenUsage | null)[] = [];
+  const compactions: CompactionUsage[] = [];
   const fullPath = activePath(records);
   const projectedPath = contextPath(fullPath);
   const projectedIds = new Set(projectedPath.map((entry) => entry.id));
@@ -196,9 +202,10 @@ export function parsePiUsage(records: readonly unknown[]): ProviderUsage {
     }
 
     if (type === "compaction") {
-      compactions.push(
-        entry.source.usage === undefined ? null : normalizePiUsage(entry.source.usage).tokens,
-      );
+      const timestamp = timestampMilliseconds(entry.source.timestamp);
+      if (entry.source.usage !== undefined && timestamp !== null) {
+        compactions.push({ timestamp, tokens: normalizePiUsage(entry.source.usage).tokens });
+      }
       continue;
     }
     if (activeTurnId && type === "branch_summary" && entry.source.usage !== undefined) {

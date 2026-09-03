@@ -5,6 +5,7 @@ import {
   formatCompactTurnMetadata,
   formatCompactTurnSummary,
   formatCompactTurnUsage,
+  findCompactionUsage,
   formatTimelineTokens,
   formatTurnMetadata,
   formatTurnModelChange,
@@ -215,5 +216,20 @@ describe("usage formatting", () => {
         contextWindow: null,
       }),
     ).toBe("model changed from provider/model-a to provider/model-b");
+  });
+});
+
+describe("compaction usage matching", () => {
+  const compactions = [
+    { timestamp: 1_000_000, tokens: firstUsage },
+    { timestamp: 2_000_000, tokens: secondUsage },
+  ];
+
+  it("uses the nearest provider event within five minutes", () => {
+    expect(findCompactionUsage(compactions, 2_001_000)).toEqual(compactions[1]);
+  });
+
+  it("does not use a distant provider event", () => {
+    expect(findCompactionUsage(compactions, 3_000_000)).toBeUndefined();
   });
 });
