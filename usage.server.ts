@@ -4,11 +4,74 @@ import { readClaudeRequests } from "./usage.claude.server";
 import { readCodexRequests } from "./usage.codex.server";
 import { readOpenCodeRequests } from "./usage.opencode.server";
 import { readPiRequests } from "./usage.pi.server";
-import { aggregateTurnUsage, getAgentUsage } from "./usage.shared";
+import { aggregateTurnUsage, getAgentUsage, type TurnUsage } from "./usage.shared";
 
 const modelCacheDurationMs = 5 * 60 * 1_000;
 const modelLimitCache = new Map<string, { expiresAt: number; limits: ReadonlyMap<string, number> }>();
 const pendingModelLimits = new Map<string, Promise<ReadonlyMap<string, number>>>();
+
+interface ProjectedTimelineEntry {
+  item: {
+    type: string;
+    messageId?: string;
+  };
+}
+
+export function addPiTimelineMessageIds(
+  turns: readonly TurnUsage[],
+  entries: readonly ProjectedTimelineEntry[],
+): TurnUsage[] {
+  const timelineMessageIds: string[] = [];
+  let groupStarted = false;
+  let assistantMessageId: string | null = null;
+
+  const finishGroup = () => {
+    if (assistantMessageId) timelineMessageIds.push(assistantMessageId);
+  };
+
+  for (const { item } of entries) {
+    if (item.type === "user_message") {
+      if (groupStarted) finishGroup();
+      groupStarted = true;
+      assistantMessageId = null;
+      continue;
+    }
+    if (item.type !== "assistant_message") continue;
+    const messageId = item.messageId?.trim();
+    if (!messageId) continue;
+    groupStarted = true;
+    assistantMessageId = messageId;
+  }
+  if (groupStarted) finishGroup();
+
+  if (timelineMessageIds.length !== turns.length) return [...turns];
+  return turns.map((turn, index) => {
+    const messageId = timelineMessageIds[index];
+    if (!messageId || turn.displayMessageIds.includes(messageId)) return turn;
+    return {
+      ...turn,
+      displayMessageIds: [...turn.displayMessageIds, messageId],
+    };
+  });
+}
+
+async function addPiTimelineAliases(
+  paseo: PluginHandlerContext["paseo"],
+  agentId: string,
+  turns: readonly TurnUsage[],
+): Promise<TurnUsage[]> {
+  try {
+    const timeline = await paseo.agents.ref(agentId).timeline.refetch({
+      direction: "tail",
+      limit: 0,
+      projection: "projected",
+    });
+    if (timeline.error) return [...turns];
+    return addPiTimelineMessageIds(turns, timeline.entries);
+  } catch {
+    return [...turns];
+  }
+}
 
 function positiveNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
@@ -77,7 +140,9 @@ export async function collectAgentUsage(
   } catch {
     // Token usage is still useful when model metadata is temporarily unavailable.
   }
+  const turns = aggregateTurnUsage(requests, limits);
   return {
-    turns: aggregateTurnUsage(requests, limits),
+    turns:
+      agent.provider === "pi" ? await addPiTimelineAliases(paseo, agentId, turns) : turns,
   };
 }
