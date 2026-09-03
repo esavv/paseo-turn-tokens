@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregateTurnUsage,
+  formatCompactTurnMetadata,
+  formatCompactTurnSummary,
+  formatCompactTurnUsage,
   formatCompactTokens,
   formatTimelineTokens,
   formatTurnMetadata,
@@ -172,7 +175,7 @@ describe("usage formatting", () => {
     expect(formatTimelineTokens(3_480_643)).toBe("3,481K");
   });
 
-  it("formats complete timeline details", () => {
+  it("formats wide timeline details", () => {
     expect(
       formatTurnUsage({
         displayMessageId: "assistant-1",
@@ -193,6 +196,22 @@ describe("usage formatting", () => {
         tokens: secondUsage,
         contextWindow: { used: 2_400, max: 16_000 },
       }),
-    ).toBe("assistant response 10 · 2 model requests · context 15% (2K / 16K)");
+    ).toBe("assistant turn 10 · 2 model requests · context 15% (2K / 16K)");
+  });
+
+  it("formats compact timeline details on three lines", () => {
+    const turn = {
+      displayMessageId: "assistant-1",
+      responseIndex: 10,
+      requestCount: 2,
+      tokens: secondUsage,
+      contextWindow: { used: 2_400, max: 16_000 },
+    };
+
+    expect(formatCompactTurnMetadata(turn)).toBe("assistant turn 10 · 2 model requests");
+    expect(formatCompactTurnSummary(turn)).toBe("2K total tokens · context 15% (2K / 16K)");
+    expect(formatCompactTurnUsage(turn)).toBe(
+      "200 in · 2K cache read · 40 cache write · 60 reasoning · 100 out",
+    );
   });
 });

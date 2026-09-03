@@ -176,15 +176,46 @@ export function formatTurnUsage(turn: TurnUsage): string {
 export function formatTurnMetadata(turn: TurnUsage): string {
   const requestLabel = turn.requestCount === 1 ? "model request" : "model requests";
   const parts = [
-    `assistant response ${formatNumber(turn.responseIndex)}`,
+    `assistant turn ${formatNumber(turn.responseIndex)}`,
     `${formatNumber(turn.requestCount)} ${requestLabel}`,
   ];
+  const context = formatTurnContext(turn);
+  if (context) parts.push(context);
+  return parts.join(" · ");
+}
+
+export function formatCompactTurnMetadata(turn: TurnUsage): string {
+  const requestLabel = turn.requestCount === 1 ? "model request" : "model requests";
+  return [
+    `assistant turn ${formatNumber(turn.responseIndex)}`,
+    `${formatNumber(turn.requestCount)} ${requestLabel}`,
+  ].join(" · ");
+}
+
+export function formatCompactTurnSummary(turn: TurnUsage): string {
+  const parts = [`${formatTimelineTokens(usageTotal(turn.tokens))} total tokens`];
+  const context = formatTurnContext(turn);
+  if (context) parts.push(context);
+  return parts.join(" · ");
+}
+
+export function formatCompactTurnUsage(turn: TurnUsage): string {
+  return [
+    `${formatTimelineTokens(turn.tokens.input)} in`,
+    `${formatTimelineTokens(turn.tokens.cacheRead)} cache read`,
+    `${formatTimelineTokens(turn.tokens.cacheWrite)} cache write`,
+    `${formatTimelineTokens(turn.tokens.reasoning)} reasoning`,
+    `${formatTimelineTokens(turn.tokens.output)} out`,
+  ].join(" · ");
+}
+
+function formatTurnContext(turn: TurnUsage): string | null {
   if (turn.contextWindow) {
-    parts.push(
+    return (
       `context ${Math.round((turn.contextWindow.used / turn.contextWindow.max) * 100)}% ` +
-        `(${formatTimelineTokens(turn.contextWindow.used)} / ` +
-        `${formatTimelineTokens(turn.contextWindow.max)})`,
+      `(${formatTimelineTokens(turn.contextWindow.used)} / ` +
+      `${formatTimelineTokens(turn.contextWindow.max)})`
     );
   }
-  return parts.join(" · ");
+  return null;
 }
