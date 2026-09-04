@@ -3,6 +3,14 @@
 An experimental Paseo plugin that displays local token usage below Claude Code, Codex, OpenCode,
 and Pi assistant turns and compaction markers. It requires Paseo `0.7.2` or later.
 
+## Install
+
+Enable plugins under **Settings > Plugins** on the daemon, then install from GitHub:
+
+```sh
+paseo plugin add esavv/paseo-token-usage
+```
+
 ## How It Works
 
 The plugin registers **timeline transformers** for projected `assistant_message` and `compaction`
@@ -31,6 +39,16 @@ from the provider's local data. For each assistant turn, the plugin:
 One assistant turn can contain several model requests, such as a tool loop. The current display is
 therefore turn-level, not model-request-level. When the final request model differs from the
 preceding assistant turn, the expanded details show the old and new model IDs on a final row.
+
+## Security and Privacy
+
+Paseo plugins are trusted code. This plugin's server code runs unsandboxed with the daemon user's
+access and reads local Claude Code, Codex, OpenCode, and Pi session data. Provider files and
+databases are opened read-only; the plugin does not modify them or make external network requests.
+
+The plugin sends normalized token counts, response identifiers, context limits, and model-change
+metadata to connected Paseo clients through its plugin RPC. It does not send transcript text or
+provider credentials through that RPC.
 
 ## Supported Providers
 
@@ -258,6 +276,8 @@ assistant messages unchanged.
 
 ```sh
 npm install
+npm run format:check
+npm run lint
 npm run typecheck
 npm test
 ```
@@ -265,9 +285,7 @@ npm test
 Install or reload the plugin on the daemon machine:
 
 ```sh
-paseo plugin install /Users/eriksavage/Projects/paseo-token-usage
+paseo plugin install /absolute/path/to/paseo-token-usage
 paseo plugin reload token-usage
 paseo plugin logs token-usage
 ```
-
-Paseo's global plugin switch must also be enabled in **Settings > Plugins**.
