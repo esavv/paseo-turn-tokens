@@ -38,11 +38,9 @@ describe("OpenCode usage", () => {
     ];
 
     expect(
-      parseOpenCodeUsage(
-        rows,
-        new Set(["assistant-message"]),
-        [{ messageId: "compaction-message", timestamp: 1_000, trigger: "auto" }],
-      ),
+      parseOpenCodeUsage(rows, new Set(["assistant-message"]), [
+        { messageId: "compaction-message", timestamp: 1_000, trigger: "auto" },
+      ]),
     ).toEqual({
       requests: [
         {

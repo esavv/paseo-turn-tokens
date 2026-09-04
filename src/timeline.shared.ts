@@ -29,8 +29,7 @@ export const transformAssistantMessage: AssistantMessageTransformer = ({ item })
   ],
 });
 
-type CompactionTransformer =
-  PluginTimelineTransformerContribution<"compaction">["transform"];
+type CompactionTransformer = PluginTimelineTransformerContribution<"compaction">["transform"];
 
 export const transformCompaction: CompactionTransformer = ({ item }) => ({
   items: [

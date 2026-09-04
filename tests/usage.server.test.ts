@@ -39,12 +39,15 @@ describe("Pi timeline aliases", () => {
 
   it("uses the last visible assistant message in a user turn", () => {
     expect(
-      addPiTimelineMessageIds([turns[0]], [
-        { item: { type: "user_message" } },
-        { item: { type: "assistant_message", messageId: "intermediate" } },
-        { item: { type: "tool_call" } },
-        { item: { type: "assistant_message", messageId: "final" } },
-      ])[0]?.displayMessageIds,
+      addPiTimelineMessageIds(
+        [turns[0]],
+        [
+          { item: { type: "user_message" } },
+          { item: { type: "assistant_message", messageId: "intermediate" } },
+          { item: { type: "tool_call" } },
+          { item: { type: "assistant_message", messageId: "final" } },
+        ],
+      )[0]?.displayMessageIds,
     ).toEqual(["persisted-1", "final"]);
   });
 

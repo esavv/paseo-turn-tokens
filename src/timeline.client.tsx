@@ -161,9 +161,7 @@ export function TokenUsageCompaction({
     ? findCompactionUsage(usage.compactions, timestamp.getTime())
     : undefined;
   const compaction = item.data.status === "completed" ? matchedCompaction : undefined;
-  if (
-    shouldHideLoadingCompaction(item.data.status, Boolean(matchedCompaction), agentStatus)
-  ) {
+  if (shouldHideLoadingCompaction(item.data.status, Boolean(matchedCompaction), agentStatus)) {
     return null;
   }
 

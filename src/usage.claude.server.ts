@@ -67,7 +67,8 @@ function contentBlocks(content: unknown): Record<string, unknown>[] {
 function hasVisibleAssistantText(content: unknown): boolean {
   if (typeof content === "string") return content.trim().length > 0;
   return contentBlocks(content).some(
-    (block) => block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0,
+    (block) =>
+      block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0,
   );
 }
 
@@ -189,7 +190,9 @@ function encodeProjectPath(input: string): string {
 }
 
 async function resolveClaudeSessionFile(sessionId: string, cwd: string): Promise<string | null> {
-  const configDir = resolveUserPath(process.env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), ".claude"));
+  const configDir = resolveUserPath(
+    process.env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), ".claude"),
+  );
   const projectsRoot = join(configDir, "projects");
   const canonicalCwd = await realpath(cwd).catch(() => cwd);
   const configuredProjectDir = process.env.CLAUDE_CODE_PROJECT_DIR_NAME?.trim();

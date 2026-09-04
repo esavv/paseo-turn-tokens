@@ -84,10 +84,7 @@ function normalizeCodexUsage(value: unknown) {
   if (!parsed.success) throw new Error("Codex token usage has an unsupported schema");
   const stored = parsed.data;
   const cacheRead = Math.min(stored.cached_input_tokens, stored.input_tokens);
-  const cacheWrite = Math.min(
-    stored.cache_write_input_tokens,
-    stored.input_tokens - cacheRead,
-  );
+  const cacheWrite = Math.min(stored.cache_write_input_tokens, stored.input_tokens - cacheRead);
   const reasoning = Math.min(stored.reasoning_output_tokens, stored.output_tokens);
   const tokens = tokenUsageSchema.parse({
     input: stored.input_tokens - cacheRead - cacheWrite,
@@ -199,7 +196,8 @@ export function parseCodexUsage(records: readonly unknown[]): ProviderUsage {
     }
     if (payload.type === "thread_rolled_back") {
       const message = isRecord(payload.msg) ? payload.msg : payload;
-      const count = nonnegativeInteger(message.num_turns) ?? nonnegativeInteger(message.numTurns) ?? 0;
+      const count =
+        nonnegativeInteger(message.num_turns) ?? nonnegativeInteger(message.numTurns) ?? 0;
       if (count === 0) continue;
       const removedTurnIds = [...turns.keys()].slice(-count);
       const removed = new Set(removedTurnIds);

@@ -12,7 +12,10 @@ import {
 } from "./usage.shared";
 
 const modelCacheDurationMs = 5 * 60 * 1_000;
-const modelLimitCache = new Map<string, { expiresAt: number; limits: ReadonlyMap<string, number> }>();
+const modelLimitCache = new Map<
+  string,
+  { expiresAt: number; limits: ReadonlyMap<string, number> }
+>();
 const pendingModelLimits = new Map<string, Promise<ReadonlyMap<string, number>>>();
 
 interface ProjectedTimelineEntry {
@@ -147,8 +150,7 @@ export async function collectAgentUsage(
   }
   const turns = aggregateTurnUsage(usage.requests, limits);
   return {
-    turns:
-      agent.provider === "pi" ? await addPiTimelineAliases(paseo, agentId, turns) : turns,
+    turns: agent.provider === "pi" ? await addPiTimelineAliases(paseo, agentId, turns) : turns,
     compactions: usage.compactions,
   };
 }

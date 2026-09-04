@@ -89,9 +89,7 @@ const zeroUsage: TokenUsage = {
 };
 
 export function usageTotal(tokens: TokenUsage): number {
-  return (
-    tokens.input + tokens.cacheRead + tokens.cacheWrite + tokens.reasoning + tokens.output
-  );
+  return tokens.input + tokens.cacheRead + tokens.cacheWrite + tokens.reasoning + tokens.output;
 }
 
 export function sumUsage(left: TokenUsage, right: TokenUsage): TokenUsage {

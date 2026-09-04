@@ -240,7 +240,9 @@ async function sessionDirFromSettings(filePath: string, cwd: string): Promise<st
 }
 
 function encodedProjectDirectory(cwd: string): string {
-  return `--${resolve(cwd).replace(/^[/\\]/u, "").replace(/[/\\:]/gu, "-")}--`;
+  return `--${resolve(cwd)
+    .replace(/^[/\\]/u, "")
+    .replace(/[/\\:]/gu, "-")}--`;
 }
 
 async function resolvePiSessionFile(

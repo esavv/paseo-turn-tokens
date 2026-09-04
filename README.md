@@ -106,12 +106,12 @@ Pi documents its JSONL structure in the
 Provider-local data does not expose compaction-summary usage consistently. These results apply to
 Claude Code `2.1.259`, Codex `0.153.0`, OpenCode `1.18.27`, and Pi `0.84.4`:
 
-| Provider | Attributable usage | Stored data |
-| --- | --- | --- |
-| Claude Code | No | Anthropic's server-side [Messages API compaction beta](https://platform.claude.com/docs/en/build-with-claude/compaction#understanding-usage) returns per-iteration compaction usage. Claude Code does not persist that usage in its local transcript or expose it to `PostCompact` hooks. Session totals can include the request without identifying it. |
-| Codex | Yes | A `token_usage_record` identifies the compaction response, and the `compacted` record refers to the same response ID. |
-| OpenCode | Yes | The token-bearing summary assistant message refers to the message that contains the compaction part. |
-| Pi | Yes | `compaction` entries store summary-generation `usage` separately from `tokensBefore`; split compactions can combine two summary requests. |
+| Provider    | Attributable usage | Stored data                                                                                                                                                                                                                                                                                                                                              |
+| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code | No                 | Anthropic's server-side [Messages API compaction beta](https://platform.claude.com/docs/en/build-with-claude/compaction#understanding-usage) returns per-iteration compaction usage. Claude Code does not persist that usage in its local transcript or expose it to `PostCompact` hooks. Session totals can include the request without identifying it. |
+| Codex       | Yes                | A `token_usage_record` identifies the compaction response, and the `compacted` record refers to the same response ID.                                                                                                                                                                                                                                    |
+| OpenCode    | Yes                | The token-bearing summary assistant message refers to the message that contains the compaction part.                                                                                                                                                                                                                                                     |
+| Pi          | Yes                | `compaction` entries store summary-generation `usage` separately from `tokensBefore`; split compactions can combine two summary requests.                                                                                                                                                                                                                |
 
 The plugin replaces the native compaction marker to show the available Codex, OpenCode, and Pi data
 in the same expandable format as assistant-turn usage. Paseo `0.7.2` has no additive timeline render
