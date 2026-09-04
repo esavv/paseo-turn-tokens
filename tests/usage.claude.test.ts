@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseClaudeRequests } from "./usage.claude.server";
-import { aggregateTurnUsage, usageTotal } from "./usage.shared";
+import { parseClaudeRequests } from "../src/usage.claude.server";
+import { aggregateTurnUsage, usageTotal } from "../src/usage.shared";
 
 const firstUsage = {
   input_tokens: 2,

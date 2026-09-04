@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addPiTimelineMessageIds } from "./usage.server";
-import type { TurnUsage } from "./usage.shared";
+import { addPiTimelineMessageIds } from "../src/usage.server";
+import type { TurnUsage } from "../src/usage.shared";
 
 const turns: TurnUsage[] = [
   {

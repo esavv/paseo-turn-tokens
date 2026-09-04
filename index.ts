@@ -1,13 +1,13 @@
 import type { PluginContext } from "@getpaseo/plugin";
-import { TokenUsageAssistantMessage, TokenUsageCompaction } from "./timeline.client";
+import { TokenUsageAssistantMessage, TokenUsageCompaction } from "./src/timeline.client";
 import {
   assistantMessageSchema,
   compactionSchema,
   transformAssistantMessage,
   transformCompaction,
-} from "./timeline.shared";
-import { collectAgentUsage } from "./usage.server";
-import { getAgentUsage } from "./usage.shared";
+} from "./src/timeline.shared";
+import { collectAgentUsage } from "./src/usage.server";
+import { getAgentUsage } from "./src/usage.shared";
 
 export default function contribute(plugin: PluginContext) {
   plugin.handle(getAgentUsage, collectAgentUsage);

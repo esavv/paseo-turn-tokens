@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseCodexRequests, parseCodexUsage } from "./usage.codex.server";
-import { aggregateTurnUsage, usageTotal } from "./usage.shared";
+import { parseCodexRequests, parseCodexUsage } from "../src/usage.codex.server";
+import { aggregateTurnUsage, usageTotal } from "../src/usage.shared";
 
 describe("Codex usage", () => {
   it("uses response records without adding cumulative token events", () => {

@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { parseJsonLinesFile } from "./usage.jsonl.server";
+import { parseJsonLinesFile } from "../src/usage.jsonl.server";
 
 async function withJsonlFile(content: string, test: (filePath: string) => Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), "paseo-token-usage-"));

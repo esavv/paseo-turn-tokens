@@ -13,7 +13,7 @@ import {
   usageTotal,
   type ModelRequestUsage,
   type TokenUsage,
-} from "./usage.shared";
+} from "../src/usage.shared";
 
 const firstUsage: TokenUsage = {
   input: 100,

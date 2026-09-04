@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseOpenCodeUsage } from "./usage.opencode.server";
+import { parseOpenCodeUsage } from "../src/usage.opencode.server";
 
 describe("OpenCode usage", () => {
   it("separates compaction summary usage from assistant turns", () => {

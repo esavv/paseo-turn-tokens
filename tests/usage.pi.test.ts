@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parsePiRequests, parsePiUsage } from "./usage.pi.server";
-import { aggregateTurnUsage, usageTotal } from "./usage.shared";
+import { parsePiRequests, parsePiUsage } from "../src/usage.pi.server";
+import { aggregateTurnUsage, usageTotal } from "../src/usage.shared";
 
 describe("Pi usage", () => {
   it("reads the active branch and includes nested model work", () => {

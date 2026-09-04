@@ -4,7 +4,7 @@ import {
   shouldHideLoadingCompaction,
   transformAssistantMessage,
   transformCompaction,
-} from "./timeline.shared";
+} from "../src/timeline.shared";
 
 describe("assistant timeline transformer", () => {
   it("preserves the assistant message in plugin data", () => {
