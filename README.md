@@ -266,8 +266,8 @@ Install or reload the plugin on the daemon machine:
 
 ```sh
 paseo plugin install /Users/eriksavage/Projects/paseo-token-usage
-paseo plugin reload paseo-token-usage
-paseo plugin logs paseo-token-usage
+paseo plugin reload token-usage
+paseo plugin logs token-usage
 ```
 
 Paseo's global plugin switch must also be enabled in **Settings > Plugins**.
