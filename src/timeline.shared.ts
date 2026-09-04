@@ -19,7 +19,7 @@ export const transformAssistantMessage: AssistantMessageTransformer = ({ item })
   items: [
     {
       type: "plugin",
-      kind: "token-usage-assistant-message",
+      kind: "turn-tokens-assistant-message",
       version: 1,
       data: {
         messageId: item.messageId ?? null,
@@ -35,7 +35,7 @@ export const transformCompaction: CompactionTransformer = ({ item }) => ({
   items: [
     {
       type: "plugin",
-      kind: "token-usage-compaction",
+      kind: "turn-tokens-compaction",
       version: 1,
       data: {
         status: item.status,

@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import { parseJsonLinesFile } from "../src/usage.jsonl.server";
 
 async function withJsonlFile(content: string, test: (filePath: string) => Promise<void>) {
-  const directory = await mkdtemp(join(tmpdir(), "paseo-token-usage-"));
+  const directory = await mkdtemp(join(tmpdir(), "paseo-turn-tokens-"));
   const filePath = join(directory, "session.jsonl");
   try {
     await writeFile(filePath, content);

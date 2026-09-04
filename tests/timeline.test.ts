@@ -20,7 +20,7 @@ describe("assistant timeline transformer", () => {
       items: [
         {
           type: "plugin",
-          kind: "token-usage-assistant-message",
+          kind: "turn-tokens-assistant-message",
           version: 1,
           data: {
             messageId: "message-1",
@@ -60,7 +60,7 @@ describe("compaction timeline transformer", () => {
       items: [
         {
           type: "plugin",
-          kind: "token-usage-compaction",
+          kind: "turn-tokens-compaction",
           version: 1,
           data: { status: "completed", trigger: "auto", preTokens: 120_000 },
         },

@@ -11,7 +11,7 @@ export function useAgentUsage(agentId: string, hostId: string, requested: boolea
   const enabled = requested && supportedProviders.has(agent?.provider ?? "");
   const previousStatus = useRef(agent?.status);
   const { data, refetch } = useQuery({
-    queryKey: ["paseo-token-usage", hostId, agentId],
+    queryKey: ["turn-tokens", hostId, agentId],
     queryFn: () => loadUsage({ agentId }),
     enabled,
     refetchInterval: agent?.status === "running" ? 2_000 : false,

@@ -1,4 +1,4 @@
-# Paseo Token Usage
+# Paseo Turn Tokens
 
 An experimental Paseo plugin that displays local token usage below Claude Code, Codex, OpenCode,
 and Pi assistant turns and compaction markers. It requires Paseo `0.7.2` or later.
@@ -8,7 +8,7 @@ and Pi assistant turns and compaction markers. It requires Paseo `0.7.2` or late
 Enable plugins under **Settings > Plugins** on the daemon, then install from GitHub:
 
 ```sh
-paseo plugin add esavv/paseo-token-usage
+paseo plugin add esavv/paseo-turn-tokens
 ```
 
 ## How It Works
@@ -285,7 +285,7 @@ npm test
 Install or reload the plugin on the daemon machine:
 
 ```sh
-paseo plugin install /absolute/path/to/paseo-token-usage
-paseo plugin reload token-usage
-paseo plugin logs token-usage
+paseo plugin install /absolute/path/to/paseo-turn-tokens
+paseo plugin reload turn-tokens
+paseo plugin logs turn-tokens
 ```
