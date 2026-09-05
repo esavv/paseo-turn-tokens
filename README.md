@@ -17,6 +17,34 @@ Enable plugins under **Settings > Plugins** on the daemon, then install from Git
 paseo plugin add esavv/paseo-turn-tokens
 ```
 
+## Development
+
+```sh
+npm install
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+```
+
+Install or reload the plugin on the daemon machine:
+
+```sh
+paseo plugin install /absolute/path/to/paseo-turn-tokens
+paseo plugin reload turn-tokens
+paseo plugin logs turn-tokens
+```
+
+## Security and Privacy
+
+Paseo plugins are trusted code. This plugin's server code runs unsandboxed with the daemon user's
+access and reads local Claude Code, Codex, OpenCode, and Pi session data. Provider files and
+databases are opened read-only; the plugin does not modify them or make external network requests.
+
+The plugin sends normalized token counts, response identifiers, context limits, and model-change
+metadata to connected Paseo clients through its plugin RPC. It does not send transcript text or
+provider credentials through that RPC.
+
 ## How It Works
 
 The plugin registers **timeline transformers** for projected `assistant_message` and `compaction`
@@ -45,16 +73,6 @@ from the provider's local data. For each assistant turn, the plugin:
 One assistant turn can contain several model requests, such as a tool loop. The current display is
 therefore turn-level, not model-request-level. When the final request model differs from the
 preceding assistant turn, the expanded details show the old and new model IDs on a final row.
-
-## Security and Privacy
-
-Paseo plugins are trusted code. This plugin's server code runs unsandboxed with the daemon user's
-access and reads local Claude Code, Codex, OpenCode, and Pi session data. Provider files and
-databases are opened read-only; the plugin does not modify them or make external network requests.
-
-The plugin sends normalized token counts, response identifiers, context limits, and model-change
-metadata to connected Paseo clients through its plugin RPC. It does not send transcript text or
-provider credentials through that RPC.
 
 ## Supported Providers
 
@@ -277,21 +295,3 @@ the enhanced item to render after a cold offline start.
 
 Provider or agent context in the timeline transformer input would let this plugin leave unsupported
 assistant messages unchanged.
-
-## Development
-
-```sh
-npm install
-npm run format:check
-npm run lint
-npm run typecheck
-npm test
-```
-
-Install or reload the plugin on the daemon machine:
-
-```sh
-paseo plugin install /absolute/path/to/paseo-turn-tokens
-paseo plugin reload turn-tokens
-paseo plugin logs turn-tokens
-```
