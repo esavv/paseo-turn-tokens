@@ -1,7 +1,7 @@
 # Paseo Turn Tokens
 
 An experimental Paseo plugin that displays local token usage below Claude Code, Codex, OpenCode,
-and Pi assistant turns and compaction markers. It requires Paseo `0.7.2` or later.
+and Pi assistant turns and compaction markers.
 
 ## Install
 
