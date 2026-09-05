@@ -34,6 +34,8 @@ interface ElementProps {
   accessibilityRole?: string;
   horizontal?: boolean;
   onPress?: () => void;
+  dataSet?: Record<string, string>;
+  selectable?: boolean;
 }
 
 function elements(node: ReactNode): ReactElement<ElementProps>[] {
@@ -74,38 +76,56 @@ describe("assistant Markdown", () => {
     const nodes = elements(tree);
     expect(textContent(tree)).toBe("TitleBold and italic and old & a < b\nnext");
     expect(nodes.some((node) => node.props.accessibilityRole === "header")).toBe(true);
-    expect(nodes.some((node) => styleOf(node).fontWeight === "700")).toBe(true);
+    expect(nodes.some((node) => styleOf(node).fontWeight === "500")).toBe(true);
     expect(nodes.some((node) => styleOf(node).fontStyle === "italic")).toBe(true);
     expect(nodes.some((node) => styleOf(node).textDecorationLine === "line-through")).toBe(true);
-    expect(nodes.some((node) => styleOf(node).fontFamily === "Menlo")).toBe(true);
+    expect(nodes.some((node) => styleOf(node).fontFamily === "ui-monospace")).toBe(true);
   });
 
   it("renders nested lists with sequential numbering and blockquotes", () => {
     const tree = render("3. first\n8. second\n   - nested\n\n> quoted\n\n---");
     expect(textContent(tree)).toBe("3.first4.second\u2022nestedquoted");
     const nodes = elements(tree);
-    expect(nodes.some((node) => styleOf(node).borderLeftColor === theme.colors.border)).toBe(true);
+    expect(nodes.some((node) => styleOf(node).borderLeftColor === theme.colors.surface2)).toBe(
+      true,
+    );
     expect(nodes.some((node) => styleOf(node).height === 1)).toBe(true);
   });
 
-  it("keeps code literal, scrollable, and readable while a fence is incomplete", () => {
+  it("keeps code literal and wraps it without a language header like Paseo", () => {
     const tree = render("```ts\nconst x = '<b>&amp;</b>';\n**not bold**");
-    expect(textContent(tree)).toBe("tsconst x = '<b>&amp;</b>';\n**not bold**");
+    expect(textContent(tree)).toBe("const x = '<b>&amp;</b>';\n**not bold**");
     const nodes = elements(tree);
-    expect(nodes.some((node) => node.type === ScrollView && node.props.horizontal)).toBe(true);
-    expect(nodes.some((node) => styleOf(node).fontWeight === "700")).toBe(false);
+    expect(nodes.some((node) => node.type === ScrollView)).toBe(false);
+    expect(nodes.some((node) => styleOf(node).fontWeight === "500")).toBe(false);
+    expect(
+      nodes.some((node) => styleOf(node).fontSize === 12 && styleOf(node).lineHeight === 17),
+    ).toBe(true);
   });
 
-  it("renders aligned tables with horizontal scrolling on compact and wide layouts", () => {
+  it("renders native-style flexible table cells on compact and wide layouts", () => {
     for (const platform of ["ios", "web"] satisfies PluginHostProps["layout"]["platform"][]) {
       const tree = render("| Name | Count |\n| :--- | ---: |\n| **A** | 12 |", platform);
       const nodes = elements(tree);
       expect(textContent(tree)).toBe("NameCountA12");
-      expect(nodes.some((node) => node.type === ScrollView && node.props.horizontal)).toBe(true);
+      expect(nodes.some((node) => node.type === ScrollView)).toBe(false);
       expect(nodes.some((node) => styleOf(node).textAlign === "right")).toBe(true);
-      expect(nodes.some((node) => styleOf(node).width === (platform === "ios" ? 150 : 220))).toBe(
+      const cells = nodes.filter((node) => styleOf(node).borderRightWidth === 1);
+      expect(cells).toHaveLength(4);
+      expect(cells.every((cell) => styleOf(cell).flex === 1 && styleOf(cell).padding === 8)).toBe(
         true,
       );
+      expect(styleOf(cells[0])).toMatchObject({
+        backgroundColor: theme.colors.surface2,
+        borderBottomWidth: 1,
+      });
+      expect(styleOf(cells[2]).backgroundColor).toBeUndefined();
+      const countHeader = nodes.find((node) => node.type === Text && textContent(node) === "Count");
+      expect(countHeader).toBeDefined();
+      if (countHeader) {
+        expect(styleOf(countHeader)).toMatchObject({ textAlign: "left", fontWeight: "600" });
+        expect(countHeader.props.selectable).toBe(true);
+      }
     }
   });
 
@@ -199,9 +219,201 @@ describe("assistant Markdown", () => {
       expect(nodes.some((node) => styleOf(node).color === theme.colors.foreground)).toBe(true);
       expect(
         nodes.some(
-          (node) => styleOf(node).fontFamily === (platform === "ios" ? "Menlo" : "monospace"),
+          (node) =>
+            styleOf(node).fontFamily ===
+            (platform === "ios"
+              ? "ui-monospace"
+              : platform === "web"
+                ? "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+                : "monospace"),
         ),
       ).toBe(true);
     }
+  });
+
+  it("matches Paseo's platform defaults for prose and inline code", () => {
+    for (const platform of [
+      "ios",
+      "android",
+      "web",
+    ] satisfies PluginHostProps["layout"]["platform"][]) {
+      const nodes = elements(render("Prose with `code` and **strong** and ~~deleted~~.", platform));
+      const paragraph = nodes.find((node) => node.type === Text && styleOf(node).width === "100%");
+      const code = nodes.find((node) => node.type === Text && styleOf(node).fontFamily);
+      expect(paragraph).toBeDefined();
+      expect(code).toBeDefined();
+      if (!paragraph || !code) throw new Error("Missing paragraph or inline code");
+      expect(styleOf(paragraph)).toMatchObject({
+        fontSize: platform === "web" ? 15 : 16,
+        lineHeight: platform === "web" ? 21 : 22,
+        marginTop: 0,
+        marginBottom: 12,
+      });
+      expect(styleOf(code)).toMatchObject({
+        fontSize: 12,
+        color: theme.colors.foreground,
+        backgroundColor: theme.colors.surface2,
+      });
+      expect(styleOf(code).lineHeight).toBeUndefined();
+      if (platform === "web") {
+        expect(styleOf(code)).toMatchObject({
+          paddingHorizontal: 4,
+          paddingVertical: 2,
+          borderRadius: 6,
+          borderWidth: 0,
+        });
+        expect(code.props.dataSet).toEqual({ pmono: "" });
+      } else {
+        expect(styleOf(code).paddingHorizontal).toBeUndefined();
+        expect(styleOf(code).borderRadius).toBeUndefined();
+        expect(code.props.dataSet).toBeUndefined();
+      }
+      expect(nodes.some((node) => styleOf(node).fontWeight === "500")).toBe(true);
+      expect(
+        nodes.some(
+          (node) =>
+            styleOf(node).textDecorationLine === "line-through" &&
+            styleOf(node).color === theme.colors.foregroundMuted,
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("matches all six native and web heading tiers", () => {
+    for (const platform of ["ios", "web"] satisfies PluginHostProps["layout"]["platform"][]) {
+      const tree = render("# One\n## Two\n### Three\n#### Four\n##### Five\n###### Six", platform);
+      const headings = elements(tree).filter((node) => node.props.accessibilityRole === "header");
+      const sizes = platform === "ios" ? [30, 25, 23, 21, 18, 18] : [28, 24, 21, 19, 17, 17];
+      expect(headings).toHaveLength(6);
+      headings.forEach((heading, index) => {
+        expect(styleOf(heading)).toMatchObject({
+          fontSize: sizes[index],
+          lineHeight: Math.round(sizes[index] * 1.3),
+          fontWeight: index < 2 ? "bold" : "600",
+          marginTop: [24, 24, 16, 16, 12, 12][index],
+          marginBottom: [12, 12, 8, 8, 4, 4][index],
+          color: index === 5 ? theme.colors.foregroundMuted : theme.colors.foreground,
+        });
+      });
+      expect(styleOf(headings[0])).toMatchObject({
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+        paddingBottom: 8,
+      });
+      expect(styleOf(headings[5])).toMatchObject({
+        letterSpacing: 0.5,
+        textTransform: platform === "ios" ? "none" : "uppercase",
+      });
+      const headingCode = elements(render("# Title `code`", platform)).find(
+        (node) => styleOf(node).fontFamily,
+      );
+      if (!headingCode) throw new Error("Missing heading code");
+      expect(styleOf(headingCode).fontSize).toBe(12);
+      expect(styleOf(headingCode).fontWeight).toBeUndefined();
+    }
+  });
+
+  it("matches code-block surfaces and protects their web monospace font", () => {
+    const tree = render("```ts\nconst value = 1;\n```\n\n    indented", "web");
+    const blocks = elements(tree).filter(
+      (node) => node.type === View && node.props.dataSet?.pmono === "",
+    );
+    expect(blocks).toHaveLength(2);
+    expect(styleOf(blocks[0])).toMatchObject({
+      backgroundColor: theme.colors.surface2,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: 6,
+      padding: 12,
+      marginVertical: 12,
+    });
+    expect(styleOf(blocks[1])).toMatchObject({ borderColor: "#CCCCCC", marginVertical: 8 });
+  });
+
+  it("matches quote surfaces and inherited quote text without dimming inline code", () => {
+    const tree = render("> Quote with `code`.\n>\n> Second paragraph.\n\nOutside.");
+    const nodes = elements(tree);
+    const quote = nodes.find((node) => styleOf(node).borderLeftWidth === 4);
+    if (!quote) throw new Error("Missing blockquote");
+    expect(styleOf(quote)).toMatchObject({
+      backgroundColor: theme.colors.surface1,
+      borderLeftColor: theme.colors.surface2,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 0,
+      marginVertical: 12,
+      marginLeft: 5,
+      borderRadius: 6,
+      borderTopLeftRadius: 0,
+      borderBottomLeftRadius: 0,
+    });
+    const paragraphs = nodes.filter((node) => node.type === Text && styleOf(node).width === "100%");
+    expect(paragraphs.map((node) => styleOf(node).color)).toEqual([
+      "#eeeeeecc",
+      "#eeeeeecc",
+      theme.colors.foreground,
+    ]);
+    const code = nodes.find((node) => styleOf(node).fontFamily);
+    if (!code) throw new Error("Missing quote code");
+    expect(styleOf(code).color).toBe(theme.colors.foreground);
+  });
+
+  it("matches list indentation, marker colors, loose paragraphs, and delimiters", () => {
+    const tree = render("3) first\n\n   continued\n\n4) second\n   - nested");
+    const nodes = elements(tree);
+    expect(textContent(tree)).toBe("3)firstcontinued4)second\u2022nested");
+    const markers = nodes.filter((node) => node.type === Text && styleOf(node).marginLeft === 10);
+    expect(markers).toHaveLength(3);
+    expect(
+      markers.every(
+        (node) =>
+          styleOf(node).marginRight === 4 && styleOf(node).color === theme.colors.foregroundMuted,
+      ),
+    ).toBe(true);
+    expect(styleOf(markers[0])).toMatchObject({ minWidth: 12, fontWeight: "normal" });
+    const paragraphs = nodes.filter((node) => node.type === Text && styleOf(node).width === "100%");
+    expect(paragraphs.map((node) => styleOf(node).marginBottom)).toEqual([0, 12, 0, 0]);
+  });
+
+  it("adds native inter-block spacing only at top-level blank separators", () => {
+    const spaced = elements(render("First.\n\nSecond.\n\n> Quote.\n>\n> More."));
+    const gaps = spaced.filter((node) => node.type === View && styleOf(node).marginBottom === 12);
+    expect(gaps).toHaveLength(2);
+    const adjacent = elements(render("# Heading\nParagraph."));
+    expect(adjacent.some((node) => node.type === View && styleOf(node).marginBottom === 12)).toBe(
+      false,
+    );
+  });
+
+  it("uses the available accent color without permanently underlining links", () => {
+    const link = elements(render("[Paseo](https://paseo.sh)")).find(
+      (node) => node.props.accessibilityRole === "link",
+    );
+    if (!link) throw new Error("Missing link");
+    expect(styleOf(link)).toMatchObject({ color: theme.colors.accent, textDecorationLine: "none" });
+  });
+
+  it("keeps styled link labels visibly linked, but does not color blocked links as active", () => {
+    const nodes = elements(
+      render("[`code` and ~~old~~](https://paseo.sh) and [`file`](./file.ts)"),
+    );
+    const styledLabels = nodes.filter(
+      (node) => styleOf(node).fontFamily || styleOf(node).textDecorationLine === "line-through",
+    );
+    expect(styledLabels.map((node) => styleOf(node).color)).toEqual([
+      theme.colors.accent,
+      theme.colors.accent,
+      theme.colors.foreground,
+    ]);
+  });
+
+  it("does not add list-bottom spacing through an intervening blockquote", () => {
+    const nodes = elements(render("- outer\n\n  > - inner\n  >\n  > after"));
+    const lists = nodes.filter(
+      (node) =>
+        node.type === View && styleOf(node).paddingLeft === 0 && styleOf(node).width === "100%",
+    );
+    expect(lists).toHaveLength(2);
+    expect(lists.map((node) => styleOf(node).marginBottom)).toEqual([0, 0]);
   });
 });

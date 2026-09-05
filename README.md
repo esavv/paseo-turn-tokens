@@ -222,9 +222,10 @@ is the only row that remains.
 Timeline transformation is replacement, not decoration. A plugin cannot keep Paseo's native
 assistant message and append content to it. The replacement uses a bundled Markdown parser and
 React Native components for headings, emphasis, lists, blockquotes, tables, external links, and
-code. It uses Paseo theme colors and compact-layout information. Code blocks and tables scroll
-horizontally when needed. Responses over 100,000 characters, those with more than 5,000 render
-tokens, or those that cannot be parsed fall back to complete, selectable source text.
+code. Supported elements follow Paseo `0.7.2`'s default Markdown typography, colors, spacing, and
+wrapping. Inline code uses a 12-point monospace font, rather than inheriting the larger prose size.
+Responses over 100,000 characters, those with more than 5,000 render tokens, or those that cannot
+be parsed fall back to complete, selectable source text.
 
 This is not Paseo's native Markdown renderer. It does not retain:
 
@@ -234,6 +235,11 @@ This is not Paseo's native Markdown renderer. It does not retain:
 - paced streaming text;
 - native assistant grouping and spacing; or
 - the assistant-turn footer, including copy and fork actions, duration, and completion time.
+
+Paseo does not expose the user's content/code font sizes, selected monospace font, or native
+Markdown link color (`accentBright`) through plugin props. The plugin uses the platform defaults
+and the public accent color instead. iPhone selection still uses React Native Text rather than
+Paseo's native attributed-text component.
 
 ### Offline Use
 

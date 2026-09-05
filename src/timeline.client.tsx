@@ -121,7 +121,7 @@ export function TokenUsageAssistantMessage({
   if (modelChange) details.push(modelChange);
 
   return (
-    <View style={{ paddingVertical: layout.compact ? 8 : 12 }}>
+    <View style={{ paddingVertical: 12 }}>
       <MarkdownMessage text={item.data.text} theme={theme} layout={layout} />
       {turn ? (
         <TokenDisclosure
