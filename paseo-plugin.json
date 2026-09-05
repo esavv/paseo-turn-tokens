@@ -1,3 +1,7 @@
 {
-  "id": "turn-tokens"
+  "id": "turn-tokens",
+  "build": [
+    ["npm", "ci", "--include=dev", "--ignore-scripts"],
+    ["npm", "run", "build"]
+  ]
 }

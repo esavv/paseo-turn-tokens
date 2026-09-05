@@ -21,11 +21,16 @@ paseo plugin add esavv/paseo-turn-tokens
 
 ```sh
 npm install
+npm run build
 npm run format:check
 npm run lint
 npm run typecheck
 npm test
 ```
+
+The build bundles the Markdown parser and converts JavaScript classes for the iPhone's Hermes
+runtime. Run it after dependency changes and before a local install or reload. Git installs run
+the dependency installation and build through `paseo-plugin.json`.
 
 Install or reload the plugin on the daemon machine:
 
@@ -45,6 +50,10 @@ The plugin sends normalized token counts, response identifiers, context limits, 
 metadata to connected Paseo clients through its plugin RPC. It does not send transcript text or
 provider credentials through that RPC.
 
+Assistant Markdown is parsed on the client. Raw HTML is displayed as text, and images show
+descriptive text without downloading the image. Only HTTP, HTTPS, and mailto links can be opened,
+and only when selected. Relative paths and Paseo file links are not navigable.
+
 ## How It Works
 
 The plugin registers **timeline transformers** for projected `assistant_message` and `compaction`
@@ -52,7 +61,7 @@ entries and versioned **timeline renderers** for their output. In Paseo's termin
 replaces a projected timeline entry with a **plugin timeline item**. "Timeline replacement"
 describes the effect; "timeline transformer" and "timeline renderer" are the public API names.
 
-The replacement keeps the original assistant message ID and text. Its renderer reproduces the text,
+The replacement keeps the original assistant message ID and text. Its renderer formats Markdown,
 loads usage through typed plugin RPC, and adds an expandable token summary. Details are expanded by
 default and can be collapsed to one line. Wide layouts use two detail lines. Compact layouts use
 three lines and shorter `in` and `out` labels.
@@ -211,12 +220,17 @@ is the only row that remains.
 ### Native Rendering
 
 Timeline transformation is replacement, not decoration. A plugin cannot keep Paseo's native
-assistant message and append content to it. The replacement displays the original message as plain,
-selectable text and uses Paseo theme colors and compact-layout information, but it does not retain:
+assistant message and append content to it. The replacement uses a bundled Markdown parser and
+React Native components for headings, emphasis, lists, blockquotes, tables, external links, and
+code. It uses Paseo theme colors and compact-layout information. Code blocks and tables scroll
+horizontally when needed. Responses over 100,000 characters, those with more than 5,000 render
+tokens, or those that cannot be parsed fall back to complete, selectable source text.
 
-- Markdown rendering and Markdown-aware copying;
-- code-block presentation and copy actions;
-- links, file navigation, and Markdown images;
+This is not Paseo's native Markdown renderer. It does not retain:
+
+- Markdown-aware copying;
+- code syntax highlighting and code-block copy actions;
+- file navigation and rendered Markdown images;
 - paced streaming text;
 - native assistant grouping and spacing; or
 - the assistant-turn footer, including copy and fork actions, duration, and completion time.

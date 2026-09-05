@@ -2,6 +2,7 @@ import { Icon, type PluginTimelineItemProps, useAgent } from "@getpaseo/plugin";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, type TextStyle, View } from "react-native";
 import type { z } from "zod";
+import { MarkdownMessage } from "./markdown.client";
 import {
   assistantMessageSchema,
   compactionSchema,
@@ -121,16 +122,7 @@ export function TokenUsageAssistantMessage({
 
   return (
     <View style={{ paddingVertical: layout.compact ? 8 : 12 }}>
-      <Text
-        selectable
-        style={{
-          color: theme.colors.foreground,
-          fontSize: 15,
-          lineHeight: 21,
-        }}
-      >
-        {item.data.text}
-      </Text>
+      <MarkdownMessage text={item.data.text} theme={theme} layout={layout} />
       {turn ? (
         <TokenDisclosure
           accessibilityLabel={`assistant turn ${turn.responseIndex}`}
