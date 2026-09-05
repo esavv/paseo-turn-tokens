@@ -1,6 +1,6 @@
 # turn-tokens
 
-See granular token usage for each assistant turn and compaction event in Paseo agent timelines.
+Token usage for each assistant turn and compaction event in your Paseo agent timeline.
 Supports Claude Code, Codex, OpenCode, and Pi.
 
 https://github.com/user-attachments/assets/158e1c96-9716-4170-b014-fd0f02c86d40
