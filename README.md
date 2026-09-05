@@ -259,10 +259,9 @@ provider's assistant message has already been replaced before that check occurs.
 
 ### Assistant-Turn Footer Slot
 
-Mo, a Paseo maintainer, suggested a plugin render slot after agent turns. A public,
-plugin-capable assistant-turn footer slot would let this plugin append aggregated usage while Paseo
-keeps ownership of the native message renderer. This would address most rendering, streaming, and
-fallback problems caused by replacement.
+A public, plugin-capable assistant-turn footer slot would let this plugin append aggregated usage
+while Paseo keeps ownership of the native message renderer. This would address most rendering,
+streaming, and fallback problems caused by replacement.
 
 ### Per-Model-Request Slot
 
