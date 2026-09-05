@@ -1,7 +1,13 @@
-# Paseo Turn Tokens
+# turn-tokens
 
-An experimental Paseo plugin that displays local token usage below Claude Code, Codex, OpenCode,
-and Pi assistant turns and compaction markers.
+See granular token usage for each assistant turn and compaction event in Paseo agent timelines.
+Supports Claude Code, Codex, OpenCode, and Pi.
+
+https://github.com/user-attachments/assets/158e1c96-9716-4170-b014-fd0f02c86d40
+
+Compaction display:
+
+<img width="885" height="267" alt="Screenshot-2026-09-05-3 41 51-PM-compaction-only" src="https://github.com/user-attachments/assets/7d7575ef-bf41-44c3-902c-240f5379a04c" />
 
 ## Install
 
