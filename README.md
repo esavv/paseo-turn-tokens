@@ -192,13 +192,47 @@ plugin does not do it.
 
 ## Limitations
 
-### Replacement Scope
-
 A timeline transformer receives one selected projected item at a time. It does not receive the
 agent ID, provider, turn, neighboring items, or complete timeline. This plugin must therefore
-replace every normal assistant message. The renderer requests usage only for Claude Code, Codex,
-OpenCode, and Pi agents, but an unsupported provider's assistant message has already been replaced
-before that check occurs.
+replace every normal assistant message.
+
+### Streaming & Flicker
+
+Paseo first renders a matching live event as a native row, then refreshes the projected tail and
+applies the plugin replacement. This can cause visible row movement while assistant text streams.
+Changing projected message text can also remount the plugin item and reset its local disclosure
+state.
+
+Paseo normally merges a native compaction's loading and completed events into one row. Timeline
+replacement removes the native compaction identity used for that merge. The plugin hides a stale
+loading replacement when completed usage appears or the agent becomes idle, so the completed marker
+is the only row that remains.
+
+### Native Rendering
+
+Timeline transformation is replacement, not decoration. A plugin cannot keep Paseo's native
+assistant message and append content to it. The replacement displays the original message as plain,
+selectable text and uses Paseo theme colors and compact-layout information, but it does not retain:
+
+- Markdown rendering and Markdown-aware copying;
+- code-block presentation and copy actions;
+- links, file navigation, and Markdown images;
+- paced streaming text;
+- native assistant grouping and spacing; or
+- the assistant-turn footer, including copy and fork actions, duration, and completion time.
+
+### Offline Use
+
+Paseo stores the plugin timeline item in its local timeline cache, but it does not store the original
+projected entry or the plugin client bundle with that item. It also removes the host's installed
+plugin renderers from the client registry when the host disconnects. The cached replacement then
+shows `Plugin timeline item unavailable` instead of the original assistant message.
+
+The renderer already carries the original text and can work without token data, but Paseo does not
+mount it while the plugin installation is unavailable. This cannot be fixed by the plugin while it
+uses timeline replacement.
+
+### Subagents
 
 Paseo `0.7.2` does not expose a plugin extension point in provider-native subagent timelines. Their
 separate timeline path does not apply timeline transformers or produce plugin timeline items. Those
@@ -216,41 +250,10 @@ usage can temporarily follow the previously persisted branch. Also, when a Pi re
 rebuilt. Usage for that uncommon response cannot attach to the live row, but it can attach after the
 history rebuild.
 
-### Native Rendering
+### Unsupported Providers
 
-Timeline transformation is replacement, not decoration. A plugin cannot keep Paseo's native
-assistant message and append content to it. The replacement displays the original message as plain,
-selectable text and uses Paseo theme colors and compact-layout information, but it does not retain:
-
-- Markdown rendering and Markdown-aware copying;
-- code-block presentation and copy actions;
-- links, file navigation, and Markdown images;
-- paced streaming text;
-- native assistant grouping and spacing; or
-- the assistant-turn footer, including copy and fork actions, duration, and completion time.
-
-### Streaming
-
-Paseo first renders a matching live event as a native row, then refreshes the projected tail and
-applies the plugin replacement. This can cause visible row movement while assistant text streams.
-Changing projected message text can also remount the plugin item and reset its local disclosure
-state.
-
-Paseo normally merges a native compaction's loading and completed events into one row. Timeline
-replacement removes the native compaction identity used for that merge. The plugin hides a stale
-loading replacement when completed usage appears or the agent becomes idle, so the completed marker
-is the only row that remains.
-
-### Offline Use
-
-Paseo stores the plugin timeline item in its local timeline cache, but it does not store the original
-projected entry or the plugin client bundle with that item. It also removes the host's installed
-plugin renderers from the client registry when the host disconnects. The cached replacement then
-shows `Plugin timeline item unavailable` instead of the original assistant message.
-
-The renderer already carries the original text and can work without token data, but Paseo does not
-mount it while the plugin installation is unavailable. This cannot be fixed by the plugin while it
-uses timeline replacement.
+The renderer requests usage only for Claude Code, Codex, OpenCode, and Pi agents, but an unsupported
+provider's assistant message has already been replaced before that check occurs.
 
 ## Feature Requests
 
