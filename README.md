@@ -74,7 +74,21 @@ One assistant turn can contain several model requests, such as a tool loop. The 
 therefore turn-level, not model-request-level. When the final request model differs from the
 preceding assistant turn, the expanded details show the old and new model IDs on a final row.
 
-## Supported Providers
+## Token Categories
+
+The five displayed categories are disjoint, even when a provider reports overlapping fields:
+
+- `input` is non-cached input;
+- `cache read` is cached input;
+- `cache write` is input written to a provider cache;
+- `reasoning` is the reported thinking or reasoning subset of output; and
+- `output` is the remaining non-reasoning output.
+
+For Claude, Codex, and Pi, reported reasoning is already included in native output. For Codex,
+cached input is also included in native input. The plugin subtracts those subsets before it adds the
+five displayed categories. This keeps the displayed total equal to the provider's full token total.
+
+## Providers
 
 ### Claude Code
 
@@ -166,21 +180,7 @@ usage. The plugin can replace a marker that Paseo supplies, but the timeline tra
 insert a missing marker at its original position. The plugin's usage RPC can still read the stored
 compaction data. This is a Paseo history-replay limitation rather than lost OpenCode data.
 
-## Token Categories
-
-The five displayed categories are disjoint, even when a provider reports overlapping fields:
-
-- `input` is non-cached input;
-- `cache read` is cached input;
-- `cache write` is input written to a provider cache;
-- `reasoning` is the reported thinking or reasoning subset of output; and
-- `output` is the remaining non-reasoning output.
-
-For Claude, Codex, and Pi, reported reasoning is already included in native output. For Codex,
-cached input is also included in native input. The plugin subtracts those subsets before it adds the
-five displayed categories. This keeps the displayed total equal to the provider's full token total.
-
-## Cursor
+### Cursor - not supported
 
 Cursor is not supported. Normal Cursor CLI and editor session files on macOS do not contain a
 documented, usable per-session token breakdown. Cursor now exposes token usage for agents started
