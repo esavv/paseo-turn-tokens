@@ -3,7 +3,7 @@
 Token usage for each assistant turn and compaction event in your Paseo agent timeline.
 Supports Claude Code, Codex, OpenCode, and Pi.
 
-https://github.com/user-attachments/assets/9eb69971-8016-47ea-888a-eb07d939df8e 
+https://github.com/user-attachments/assets/9eb69971-8016-47ea-888a-eb07d939df8e
 
 Compaction display:
 
@@ -207,10 +207,14 @@ replace every normal assistant message.
 
 ### Streaming & Flicker
 
-Paseo first renders a matching live event as a native row, then refreshes the projected tail and
+Paseo `0.7.2` first renders a matching live event as a native row, then refreshes the projected tail and
 applies the plugin replacement. This can cause visible row movement while assistant text streams.
 Changing projected message text can also remount the plugin item and reset its local disclosure
 state.
+
+Post-`0.7.2`, Paseo `main` includes [render-time timeline transformations](https://github.com/getpaseo/paseo/pull/4192)
+with stable source identities. This addresses the native/plugin row split and text-update remounts
+behind this flicker. This plugin has not yet been tested with that implementation.
 
 Paseo normally merges a native compaction's loading and completed events into one row. Timeline
 replacement removes the native compaction identity used for that merge. The plugin hides a stale
@@ -219,14 +223,19 @@ is the only row that remains.
 
 ### Offline Use
 
-Paseo stores the plugin timeline item in its local timeline cache, but it does not store the original
+Paseo `0.7.2` stores the plugin timeline item in its local timeline cache, but it does not store the original
 projected entry or the plugin client bundle with that item. It also removes the host's installed
 plugin renderers from the client registry when the host disconnects. The cached replacement then
 shows `Plugin timeline item unavailable` instead of the original assistant message.
 
 The renderer already carries the original text and can work without token data, but Paseo does not
 mount it while the plugin installation is unavailable. This cannot be fixed by the plugin while it
-uses timeline replacement.
+uses timeline replacement on `0.7.2`.
+
+Post-`0.7.2`, the same [change on Paseo `main`](https://github.com/getpaseo/paseo/pull/4192) keeps
+untransformed source rows in timeline state and cache. Native messages can then render when plugin
+registrations are removed on disconnect. This does not preserve the plugin UI offline or recover
+original messages from old replacement-only caches.
 
 ### Subagents
 
