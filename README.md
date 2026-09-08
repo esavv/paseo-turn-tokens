@@ -19,7 +19,7 @@ paseo plugin add esavv/paseo-turn-tokens
 
 ## Development
 
-Use Node.js 24, matching CI. `npm install` also installs the Git hooks.
+Use Node.js 24, matching CI. `npm install` also installs git hooks.
 
 ```sh
 npm install
@@ -29,10 +29,6 @@ npm run lint
 npm run typecheck
 npm test
 ```
-
-The pre-commit hook formats staged source, Markdown, JSON, and YAML files and lints staged source
-files. The pre-push hook runs formatting, lint, TypeScript, and the full test suite. Run the same
-checks manually with `npm run check:push`.
 
 The build bundles the Markdown parser and converts JavaScript classes for the iPhone's Hermes
 runtime. Run it after dependency changes and before a local install or reload. Git installs run
@@ -45,6 +41,62 @@ paseo plugin install /absolute/path/to/paseo-turn-tokens
 paseo plugin reload turn-tokens
 paseo plugin logs turn-tokens
 ```
+
+## Limitations
+
+A timeline transformer receives one selected projected item at a time. It does not receive the
+agent ID, provider, turn, neighboring items, or complete timeline. This plugin must therefore
+replace every normal assistant message.
+
+### Streaming & Flicker
+
+Paseo `0.7.2` first renders a matching live event as a native row, then refreshes the projected tail and
+applies the plugin replacement. This can cause visible row movement while assistant text streams.
+Changing projected message text can also remount the plugin item and reset its local disclosure
+state.
+
+Post-`0.7.2`, Paseo `main` includes [render-time timeline transformations](https://github.com/getpaseo/paseo/pull/4192)
+with stable source identities. This addresses the native/plugin row split and text-update remounts
+behind this flicker. This plugin has not yet been tested with that implementation.
+
+Paseo normally merges a native compaction's loading and completed events into one row. Timeline
+replacement removes the native compaction identity used for that merge. The plugin hides a stale
+loading replacement when completed usage appears or the agent becomes idle, so the completed marker
+is the only row that remains.
+
+### Offline Use
+
+Paseo `0.7.2` stores the plugin timeline item in its local timeline cache, but it does not store the original
+projected entry or the plugin client bundle with that item. It also removes the host's installed
+plugin renderers from the client registry when the host disconnects. The cached replacement then
+shows `Plugin timeline item unavailable` instead of the original assistant message.
+
+The renderer already carries the original text and can work without token data, but Paseo does not
+mount it while the plugin installation is unavailable. This cannot be fixed by the plugin while it
+uses timeline replacement on `0.7.2`.
+
+Post-`0.7.2`, the same [change on Paseo `main`](https://github.com/getpaseo/paseo/pull/4192) keeps
+untransformed source rows in timeline state and cache. Native messages can then render when plugin
+registrations are removed on disconnect. This does not preserve the plugin UI offline or recover
+original messages from old replacement-only caches.
+
+### Subagents
+
+Paseo `0.7.2` does not expose a plugin extension point in provider-native subagent timelines. Their
+separate timeline path does not apply timeline transformers or produce plugin timeline items. Those
+timelines also use synthetic stream IDs instead of normal Paseo agent IDs, so the current usage RPC
+cannot query them. Plugin features outside the subagent timeline are not affected.
+
+### Provider State
+
+Claude sidechain responses are not included because Paseo does not transform provider-native
+subagent timelines.
+
+Pi does not persist an in-memory branch selection until another entry is appended. After a rewind,
+usage can temporarily follow the previously persisted branch. Also, when a Pi response has no
+`responseId`, Paseo uses a random message ID for the live row and a deterministic ID after history is
+rebuilt. Usage for that uncommon response cannot attach to the live row, but it can attach after the
+history rebuild.
 
 ## Security and Privacy
 
@@ -205,68 +257,7 @@ counts for an existing normal local Cursor session, and Paseo's Cursor ACP provi
 them to this plugin. Reading opaque Cursor databases would depend on an undocumented format, so the
 plugin does not do it.
 
-## Limitations
-
-A timeline transformer receives one selected projected item at a time. It does not receive the
-agent ID, provider, turn, neighboring items, or complete timeline. This plugin must therefore
-replace every normal assistant message.
-
-### Streaming & Flicker
-
-Paseo `0.7.2` first renders a matching live event as a native row, then refreshes the projected tail and
-applies the plugin replacement. This can cause visible row movement while assistant text streams.
-Changing projected message text can also remount the plugin item and reset its local disclosure
-state.
-
-Post-`0.7.2`, Paseo `main` includes [render-time timeline transformations](https://github.com/getpaseo/paseo/pull/4192)
-with stable source identities. This addresses the native/plugin row split and text-update remounts
-behind this flicker. This plugin has not yet been tested with that implementation.
-
-Paseo normally merges a native compaction's loading and completed events into one row. Timeline
-replacement removes the native compaction identity used for that merge. The plugin hides a stale
-loading replacement when completed usage appears or the agent becomes idle, so the completed marker
-is the only row that remains.
-
-### Offline Use
-
-Paseo `0.7.2` stores the plugin timeline item in its local timeline cache, but it does not store the original
-projected entry or the plugin client bundle with that item. It also removes the host's installed
-plugin renderers from the client registry when the host disconnects. The cached replacement then
-shows `Plugin timeline item unavailable` instead of the original assistant message.
-
-The renderer already carries the original text and can work without token data, but Paseo does not
-mount it while the plugin installation is unavailable. This cannot be fixed by the plugin while it
-uses timeline replacement on `0.7.2`.
-
-Post-`0.7.2`, the same [change on Paseo `main`](https://github.com/getpaseo/paseo/pull/4192) keeps
-untransformed source rows in timeline state and cache. Native messages can then render when plugin
-registrations are removed on disconnect. This does not preserve the plugin UI offline or recover
-original messages from old replacement-only caches.
-
-### Subagents
-
-Paseo `0.7.2` does not expose a plugin extension point in provider-native subagent timelines. Their
-separate timeline path does not apply timeline transformers or produce plugin timeline items. Those
-timelines also use synthetic stream IDs instead of normal Paseo agent IDs, so the current usage RPC
-cannot query them. Plugin features outside the subagent timeline are not affected.
-
-### Provider State
-
-Claude sidechain responses are not included because Paseo does not transform provider-native
-subagent timelines.
-
-Pi does not persist an in-memory branch selection until another entry is appended. After a rewind,
-usage can temporarily follow the previously persisted branch. Also, when a Pi response has no
-`responseId`, Paseo uses a random message ID for the live row and a deterministic ID after history is
-rebuilt. Usage for that uncommon response cannot attach to the live row, but it can attach after the
-history rebuild.
-
-### Unsupported Providers
-
-The renderer requests usage only for Claude Code, Codex, OpenCode, and Pi agents, but an unsupported
-provider's assistant message has already been replaced before that check occurs.
-
-## Feature Requests
+## Feature Requests for Paseo
 
 ### Assistant-Turn Footer Slot
 
