@@ -1,8 +1,7 @@
 # Changelog
 
-## 0.1.0 (Unreleased)
+## 0.1.0 (2026-09-08)
 
 ### Features
 
-- Initial release with assistant-turn and compaction token usage ([a5384f0](https://github.com/esavv/paseo-turn-tokens/commit/a5384f005493719f9fff65d4298b9715f7ce7a03)).
-- Markdown assistant responses with styling based on Paseo's native defaults, including headings, lists, quotes, links, code, and tables.
+- Initial release with assistant-turn and compaction token usage ([eb68a51](https://github.com/esavv/paseo-turn-tokens/commit/eb68a512a5ae7c4751a9a81c6f02b86235dc2a6c)).
