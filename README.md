@@ -19,6 +19,8 @@ paseo plugin add esavv/paseo-turn-tokens
 
 ## Development
 
+Use Node.js 24, matching CI. `npm install` also installs the Git hooks.
+
 ```sh
 npm install
 npm run build
@@ -27,6 +29,10 @@ npm run lint
 npm run typecheck
 npm test
 ```
+
+The pre-commit hook formats staged source, Markdown, JSON, and YAML files and lints staged source
+files. The pre-push hook runs formatting, lint, TypeScript, and the full test suite. Run the same
+checks manually with `npm run check:push`.
 
 The build bundles the Markdown parser and converts JavaScript classes for the iPhone's Hermes
 runtime. Run it after dependency changes and before a local install or reload. Git installs run
